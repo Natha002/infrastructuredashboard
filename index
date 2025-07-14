@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Infrastructure Dashboard for KeNHA(Western)</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF and html2canvas for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Custom styles for the Inter font and general layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top to allow scrolling */
+            min-height: 100vh; /* Minimum height to fill viewport */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 1400px; /* Increased max width for more columns */
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .section-title {
+            font-size: 1.75rem; /* Equivalent to text-2xl */
+            font-weight: 700; /* Equivalent to font-bold */
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        .input-group input[type="text"],
+        .input-group textarea,
+        .input-group select,
+        .input-group input[type="file"] { /* Added file input */
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dcdcdc;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .input-group input[type="text"]:focus,
+        .input-group textarea:focus,
+        .input-group select:focus,
+        .input-group input[type="file"]:focus { /* Added file input */
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background-color: #ecf0f1;
+            color: #34495e;
+            border: 1px solid #bdc3c7;
+        }
+        .btn-secondary:hover {
+            background-color: #dbe4e6;
+            transform: translateY(-2px);
+        }
+        /* Table specific styles */
+        .reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            overflow: hidden; /* Ensures rounded corners apply to table */
+        }
+        .reports-table th, .reports-table td {
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+            vertical-align: top;
+        }
+        .reports-table th {
+            background-color: #f2f2f2;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+        .reports-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .reports-table tbody tr:hover {
+            background-color: #f0f8ff;
+        }
+        .reports-table img {
+            max-width: 80px; /* Smaller image in table */
+            height: auto;
+            border-radius: 5px;
+            display: block; /* Ensures image doesn't take full width of cell */
+            margin: 0 auto; /* Center image in cell */
+        }
+        .ai-response-cell {
+            font-style: italic;
+            color: #2e7d32;
+            background-color: #e8f5e9;
+            border-left: 3px solid #4caf50;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Responsive adjustments */
+        @media (max-width: 1024px) { /* Adjusted breakpoint for table stacking */
+            .reports-table, .reports-table thead, .reports-table tbody, .reports-table th, .reports-table td, .reports-table tr {
+                display: block; /* Make table elements behave like block elements */
+            }
+            .reports-table thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            .reports-table tr {
+                margin-bottom: 15px;
+                border: 1px solid #e0e0e0;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .reports-table td {
+                border: none;
+                border-bottom: 1px solid #e0e0e0;
+                position: relative;
+                padding-left: 50%; /* Space for pseudo-element label */
+                text-align: right;
+            }
+            .reports-table td:last-child {
+                border-bottom: 0;
+            }
+            .reports-table td:before {
+                content: attr(data-label); /* Use data-label for mobile headers */
+                position: absolute;
+                left: 15px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+                color: #555;
+            }
+        }
+
+        /* Chart specific styles */
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .chart-box {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            flex: 1 1 calc(50% - 20px); /* Two columns on larger screens */
+            min-width: 300px; /* Minimum width for charts */
+        }
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .bar-chart .bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .bar-chart .bar-label {
+            width: 120px; /* Fixed width for labels */
+            font-size: 0.9rem;
+            color: #555;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .bar-chart .bar-fill {
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+            position: relative;
+        }
+        .bar-chart .bar-value {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .pie-chart-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        .pie-slice {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform-origin: 50% 50%;
+            clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%); /* Default large slice */
+        }
+        .pie-legend {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+            text-align: left;
+        }
+        .pie-legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        .pie-legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+        .metric-box {
+            background-color: #e0f2f7;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            flex: 1 1 100%; /* Full width on small screens */
+            margin-bottom: 20px;
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2196f3;
+        }
+        .metric-label {
+            font-size: 1.1rem;
+            color: #555;
+        }
+        /* Toast messages */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(-20px);
+            min-width: 200px;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success {
+            background-color: #28a745; /* Green for success */
+        }
+        .toast.error {
+            background-color: #dc3545; /* Red for error */
+        }
+        .toast.info {
+            background-color: #17a2b8; /* Blue for info */
+        }
+
+        /* Map Placeholder */
+        .map-placeholder {
+            width: 100%;
+            height: 300px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-size: 1.2rem;
+            font-style: italic;
+            overflow: hidden; /* Ensure image fits */
+        }
+        .map-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Cover the area */
+        }
+
+        @media (max-width: 768px) {
+            .chart-box {
+                flex: 1 1 100%; /* Single column on small screens */
+            }
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase config and app ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        // Your web app's Firebase configuration (provided by user)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCJYussUDwJ6k9jYQSbYQlCA75FyI9zqw",
+            authDomain: "kenha-inspection-msc.firebaseapp.com",
+            projectId: "kenha-inspection-msc",
+            storageBucket: "kenha-inspection-msc.firebasestorage.app",
+            messagingSenderId: "511258658688",
+            appId: "1:511258658688:web:c7d69249b6120fd314a365",
+            measurementId: "G-DDW51BF7HG"
+        };
+        console.log("Using Firebase config:", firebaseConfig); // Log the actual config being used
+
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null; // To store the current user's ID
+        let isAuthReady = false; // Flag to ensure auth is ready before Firestore ops
+
+        // Get UI elements
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const simulateMessageBtn = document.getElementById('simulateMessageBtn');
+        const whatsappMessageInput = document.getElementById('whatsappMessage');
+        const imageUploadInput = document.getElementById('imageUpload');
+        const defectTypeSelect = document.getElementById('defectType');
+        const severitySelect = document.getElementById('severity');
+        const kmPostInput = document.getElementById('kmPost');
+        const assetIdInput = document.getElementById('assetId');
+        const assignedTeamInput = document.getElementById('assignedTeam');
+        const userRoleSelect = document.getElementById('userRole');
+        const latitudeInput = document.getElementById('latitude'); // New
+        const longitudeInput = document.getElementById('longitude'); // New
+        const reportsContainer = document.getElementById('reportsContainer');
+        const aiResponseDisplay = document.getElementById('aiResponseDisplay');
+        const aiLoadingSpinner = document.getElementById('aiLoadingSpinner');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        const dashboardChartsContainer = document.getElementById('dashboardCharts');
+        const searchInput = document.getElementById('searchInput');
+        const toastContainer = document.getElementById('toast-container');
+
+
+        // Disable button initially
+        simulateMessageBtn.disabled = true;
+        simulateMessageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+        </svg> Initializing...`; // Indicate loading state
+
+
+        // --- Firebase Authentication ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = `Your User ID: ${userId}`;
+                console.log("Authenticated with Firebase. User ID:", userId);
+                isAuthReady = true;
+                simulateMessageBtn.disabled = false; // Enable button
+                simulateMessageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                </svg> Submit Inspection Report`; // Restore button text
+                // Once authenticated, start listening for reports
+                listenForReports();
+            } else {
+                console.log("No user signed in. Attempting anonymous sign-in...");
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously.");
+                    }
+                } catch (error) {
+                    console.error("Firebase authentication error:", error);
+                    userIdDisplay.textContent = `Authentication Error: ${error.message}. **Action Required: Please enable 'Anonymous' sign-in method in your Firebase project's Authentication settings.**`;
+                    simulateMessageBtn.disabled = true; // Keep disabled on error
+                    simulateMessageBtn.textContent = 'Error Initializing';
+                }
+            }
+        });
+
+        // --- Utility Functions ---
+
+        /**
+         * Shows a toast notification.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         * @param {number} duration - How long the toast should be visible in ms.
+         */
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            // Show the toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10); // Small delay to allow CSS transition
+
+            // Hide and remove the toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, duration);
+        }
+
+        // Helper to convert severity to a numerical value for sorting
+        function getSeverityValue(severity) {
+            switch (severity) {
+                case 'Critical': return 4;
+                case 'High': return 3;
+                case 'Medium': return 2;
+                case 'Low': return 1;
+                default: return 0; // For 'N/A' or 'Other'
+            }
+        }
+
+        // Helper for severity colors
+        function getSeverityColor(severity) {
+            switch (severity) {
+                case 'Critical': return '#f39c12';     // Orange
+                case 'High': return '#f1c40f';         // Yellow
+                case 'Medium': return '#1abc9c';       // Teal/Greenish
+                case 'Low': return '#2ecc71';          // Green
+                default: return '#bdc3c7';             // Grey
+            }
+        }
+
+        // --- Firestore Operations ---
+
+        let allReports = []; // Store all reports for filtering
+
+        /**
+         * Listens for real-time updates to reports from Firestore.
+         * Displays reports in a table format in the UI.
+         * Also populates charts with data.
+         */
+        function listenForReports() {
+            if (!isAuthReady) {
+                console.warn("Firestore listener not started: Authentication not ready.");
+                return;
+            }
+
+            const reportsCollectionRef = collection(db, `artifacts/${appId}/public/data/reports`);
+            const q = query(reportsCollectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                reportsContainer.innerHTML = ''; // Clear existing reports
+
+                let fetchedReports = [];
+                snapshot.forEach((doc) => {
+                    fetchedReports.push({ id: doc.id, ...doc.data() });
+                });
+
+                // If no reports from Firestore, or very few, add sample data for demonstration
+                // This ensures charts always have data even if the DB is empty
+                if (fetchedReports.length === 0) { 
+                    const sampleReports = [
+                        {
+                            id: 'sample1', userRole: 'Regional Director (RD)', defectType: 'Pothole', severity: 'Critical',
+                            kmPost: 'KM 10+200', assetId: 'N/A', message: 'Large pothole on main highway, immediate hazard.',
+                            imageUrl: 'https://placehold.co/80x60/f39c12/ffffff?text=Critical',
+                            timestamp: new Date(Date.now() - 3600000 * 24 * 2), // 2 days ago
+                            submittedAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Alpha', aiResponse: 'Immediate emergency patching required.',
+                            latitude: -0.3031, longitude: 36.0800 // Example: Nakuru
+                        },
+                        {
+                            id: 'sample2', userRole: 'Inspector', defectType: 'Cracks (Road)', severity: 'High',
+                            kmPost: 'KM 5+150', assetId: 'N/A', message: 'Extensive alligator cracking near bridge approach.',
+                            imageUrl: 'https://placehold.co/80x60/f1c40f/ffffff?text=High',
+                            timestamp: new Date(Date.now() - 3600000 * 24 * 1), // 1 day ago
+                            submittedAt: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
+                            status: 'In Progress', assignedTeam: 'Team Beta', aiResponse: 'Schedule crack sealing within 14 days.',
+                            latitude: -1.2921, longitude: 36.8219 // Example: Nairobi
+                        },
+                        {
+                            id: 'sample3', userRole: 'Assistant Engineer (Ass Eng)', defectType: 'Culvert Blockage', severity: 'Critical',
+                            kmPost: 'KM 20+500', assetId: 'C27-CULV-005', message: 'Culvert completely blocked with debris, causing water buildup.',
+                            imageUrl: 'https://placehold.co/80x60/f39c12/ffffff?text=Critical',
+                            timestamp: new Date(Date.now() - 3600000 * 12), // 12 hours ago
+                            submittedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Gamma', aiResponse: 'Urgent debris removal and flow restoration.',
+                            latitude: 0.5143, longitude: 35.2698 // Example: Eldoret
+                        },
+                        {
+                            id: 'sample4', userRole: 'Inspector', defectType: 'Pothole', severity: 'Medium',
+                            kmPost: 'KM 12+050', assetId: 'N/A', message: 'Medium-sized pothole on rural road.',
+                            imageUrl: 'https://placehold.co/80x60/1abc9c/ffffff?text=Medium',
+                            timestamp: new Date(Date.now() - 3600000 * 6), // 6 hours ago
+                            submittedAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+                            status: 'Resolved', assignedTeam: 'Team Alpha', aiResponse: 'Monitor, schedule routine patching.',
+                            latitude: -0.0236, longitude: 37.9062 // Example: Nanyuki
+                        },
+                        {
+                            id: 'sample5', userRole: 'Foreman', defectType: 'Shoulder Erosion', severity: 'Low',
+                            kmPost: 'KM 30+800', assetId: 'N/A', message: 'Minor shoulder erosion along straight section.',
+                            imageUrl: 'https://placehold.co/80x60/2ecc71/ffffff?text=Low',
+                            timestamp: new Date(Date.now() - 3600000 * 3), // 3 hours ago
+                            submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Beta', aiResponse: 'Monitor shoulder stability, plan for minor repairs.',
+                            latitude: -4.0437, longitude: 39.6682 // Example: Mombasa
+                        },
+                        {
+                            id: 'sample6', userRole: 'Regional Director (RD)', defectType: 'Bridge Damage', severity: 'Critical',
+                            kmPost: 'KM 50+000', assetId: 'B-001', message: 'Significant structural cracks observed on Bridge 001.',
+                            imageUrl: 'https://placehold.co/80x60/f39c12/ffffff?text=Critical',
+                            timestamp: new Date(Date.now() - 3600000 * 2), // 2 hours ago
+                            submittedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Gamma', aiResponse: 'Immediate bridge closure and structural engineering assessment.',
+                            latitude: 0.2833, longitude: 34.7667 // Example: Kisumu
+                        },
+                        {
+                            id: 'sample7', userRole: 'Inspector', defectType: 'Pothole', severity: 'High',
+                            kmPost: 'KM 15+400', assetId: 'N/A', message: 'Several large potholes forming a cluster.',
+                            imageUrl: 'https://placehold.co/80x60/f1c40f/ffffff?text=High',
+                            timestamp: new Date(Date.now() - 3600000 * 1), // 1 hour ago
+                            submittedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Alpha', aiResponse: 'Schedule patching within 7 days.',
+                            latitude: -0.7171, longitude: 37.2530 // Example: Thika
+                        },
+                        {
+                            id: 'sample8', userRole: 'Foreman', defectType: 'Drainage Issue', severity: 'Medium',
+                            kmPost: 'KM 25+750', assetId: 'N/A', message: 'Blocked roadside drain causing minor flooding during rain.',
+                            imageUrl: 'https://placehold.co/80x60/1abc9c/ffffff?text=Medium',
+                            timestamp: new Date(Date.now() - 3600000 * 0.5), // 30 mins ago
+                            submittedAt: new Date(Date.now() - 3600000 * 0.5).toISOString(),
+                            status: 'In Progress', assignedTeam: 'Team Gamma', aiResponse: 'Monitor drainage, plan for routine maintenance.',
+                            latitude: -0.2833, longitude: 34.5833 // Example: Kisii
+                        }
+                    ];
+                    allReports = [...sampleReports]; // Use all sample reports if Firestore is empty
+                } else {
+                    allReports = fetchedReports;
+                }
+
+                // Apply current filter/search
+                filterReports();
+
+            }, (error) => {
+                console.error("Error listening to reports:", error);
+                reportsContainer.innerHTML = `<p class="text-red-500 text-center">Error loading reports: ${error.message}</p>`;
+                dashboardChartsContainer.innerHTML = `<p class="text-red-500 text-center">Error loading chart data: ${error.message}</p>`;
+            });
+        }
+
+        /**
+         * Filters and displays reports based on search input.
+         */
+        function filterReports() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let filteredReports = allReports.filter(report => {
+                const message = (report.message || '').toLowerCase();
+                const defectType = (report.defectType || '').toLowerCase();
+                const severity = (report.severity || '').toLowerCase();
+                const kmPost = (report.kmPost || '').toLowerCase();
+                const assetId = (report.assetId || '').toLowerCase();
+                const userRole = (report.userRole || '').toLowerCase();
+                const assignedTeam = (report.assignedTeam || '').toLowerCase();
+                const aiResponse = (report.aiResponse || '').toLowerCase();
+
+                return message.includes(searchTerm) ||
+                       defectType.includes(searchTerm) ||
+                       severity.includes(searchTerm) ||
+                       kmPost.includes(searchTerm) ||
+                       assetId.includes(searchTerm) ||
+                       userRole.includes(searchTerm) ||
+                       assignedTeam.includes(searchTerm) ||
+                       aiResponse.includes(searchTerm);
+            });
+
+            // Sort filtered reports: first by severity (Critical > High > Medium > Low), then by timestamp (newest first)
+            filteredReports.sort((a, b) => {
+                const severityComparison = getSeverityValue(b.severity) - getSeverityValue(a.severity);
+                if (severityComparison !== 0) {
+                    return severityComparison;
+                }
+                // If severity is the same, sort by timestamp (newest first)
+                const timeA = a.timestamp?.toDate() || new Date(a.submittedAt);
+                const timeB = b.timestamp?.toDate() || new Date(b.submittedAt);
+                return timeB - timeA;
+            });
+
+            displayReports(filteredReports);
+            renderDashboardCharts(filteredReports); // Render charts based on filtered data
+        }
+
+        /**
+         * Displays reports in the table.
+         * @param {Array} reportsToDisplay - The array of reports to display.
+         */
+        function displayReports(reportsToDisplay) {
+            reportsContainer.innerHTML = '';
+
+            if (reportsToDisplay.length === 0) {
+                reportsContainer.innerHTML = '<p class="text-gray-500 text-center">No reports match your search criteria.</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'reports-table';
+            table.id = 'reportsTable'; // Add ID for PDF export
+
+            // Create table header
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>Reporter Role</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Location (KM Post)</th>
+                    <th>Asset ID</th>
+                    <th>Message</th>
+                    <th>Image</th>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Assigned To</th>
+                    <th>AI Analysis & Action</th>
+                </tr>
+            `;
+            table.appendChild(thead);
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+            reportsToDisplay.forEach(report => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td data-label="Reporter Role">${report.userRole || 'N/A'}</td>
+                    <td data-label="Type">${report.defectType || 'N/A'}</td>
+                    <td data-label="Severity">${report.severity || 'N/A'}</td>
+                    <td data-label="Location (KM Post)">${report.kmPost || 'N/A'}${report.latitude && report.longitude ? `<br><span class="text-xs text-gray-500">(${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)})</span>` : ''}</td>
+                    <td data-label="Asset ID">${report.assetId || 'N/A'}</td>
+                    <td data-label="Message">${report.message}</td>
+                    <td data-label="Image">
+                        ${report.imageUrl ? `<img src="${report.imageUrl}" alt="Defect Image" onerror="this.onerror=null;this.src='https://placehold.co/80x60/cccccc/333333?text=Image';" class="mt-1 rounded-sm shadow-sm">` : 'No Image'}
+                    </td>
+                    <td data-label="Timestamp">${report.timestamp ? new Date(report.timestamp.toDate()).toLocaleString() : (report.submittedAt ? new Date(report.submittedAt).toLocaleString() : 'N/A')}</td>
+                    <td data-label="Status">
+                        <select class="status-dropdown p-2 border rounded-md" data-report-id="${report.id}">
+                            <option value="Reported" ${report.status === 'Reported' ? 'selected' : ''}>Reported</option>
+                            <option value="In Progress" ${report.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Resolved" ${report.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                        </select>
+                    </td>
+                    <td data-label="Assigned To">${report.assignedTeam || 'Unassigned'}</td>
+                    <td data-label="AI Analysis & Action" class="ai-response-cell">
+                        ${report.aiResponse ? report.aiResponse.replace('**AI Analysis:** ', '') : 'Pending AI analysis...'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            reportsContainer.appendChild(table);
+
+            // Add event listeners to status dropdowns
+            reportsContainer.querySelectorAll('.status-dropdown').forEach(dropdown => {
+                dropdown.addEventListener('change', (event) => {
+                    const reportId = event.target.dataset.reportId;
+                    const newStatus = event.target.value;
+                    updateReportStatus(reportId, newStatus);
+                });
+            });
+        }
+
+        /**
+         * Updates the status of a report in Firestore.
+         * @param {string} reportId - The ID of the report document.
+         * @param {string} newStatus - The new status to set.
+         */
+        async function updateReportStatus(reportId, newStatus) {
+            if (!isAuthReady || !userId) {
+                showToast("Authentication not ready. Cannot update status.", "error");
+                return;
+            }
+            try {
+                const reportDocRef = doc(db, `artifacts/${appId}/public/data/reports`, reportId);
+                await updateDoc(reportDocRef, { status: newStatus });
+                showToast(`Report ${reportId.substring(0, 5)}... status updated to ${newStatus}`, "success");
+            } catch (error) {
+                console.error("Error updating report status:", error);
+                showToast(`Failed to update status for report ${reportId.substring(0, 5)}...`, "error");
+            }
+        }
+
+
+        /**
+         * Adds a new report to Firestore.
+         * @param {object} reportData - Object containing all report fields.
+         */
+        async function addReport(reportData) {
+            if (!isAuthReady || !userId) {
+                console.error("Cannot add report: Authentication not ready or user ID missing.");
+                showToast("The system is still setting up. Please wait for 'Loading User ID...' to change to your actual ID before submitting.", "error");
+                return;
+            }
+
+            simulateMessageBtn.disabled = true; // Disable button during submission
+            simulateMessageBtn.innerHTML = `<span class="loading-spinner"></span> Submitting...`;
+            aiResponseDisplay.innerHTML = 'Submitting report...';
+            aiLoadingSpinner.classList.remove('hidden'); // Ensure spinner is shown for submission
+
+            try {
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/reports`), {
+                    userId: userId, // Keep the Firebase UID for internal tracking
+                    timestamp: serverTimestamp(), // Use server timestamp for consistency
+                    aiResponse: null, // Placeholder for AI response
+                    ...reportData // Spread all other report data including userRole and submittedAt
+                });
+                console.log("Report added with ID: ", docRef.id);
+                showToast("Report submitted successfully!", "success");
+                // Trigger AI processing immediately after adding the report
+                processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showToast("Failed to send report. Please try again.", "error");
+                aiResponseDisplay.innerHTML = `<p class="text-red-500">Submission failed: ${e.message}</p>`;
+            } finally {
+                // The spinner for submission will be hidden by the AI processing step's finally block
+                // or if AI processing fails immediately.
+                simulateMessageBtn.disabled = false; // Re-enable button
+                simulateMessageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                </svg> Submit Inspection Report`;
+            }
+        }
+
+        /**
+         * Simulates AI processing of a report and updates it in Firestore.
+         * @param {string} reportId - The ID of the report document.
+         * @param {string} message - The message content.
+         * @param {string} defectType - The selected defect type.
+         * @param {string} severity - The selected severity.
+         */
+        async function processReportWithAI(reportId, message, defectType, severity) {
+            aiResponseDisplay.innerHTML = 'AI is analyzing the report...';
+            aiLoadingSpinner.classList.remove('hidden'); // Show spinner for AI analysis
+
+            // Simulate API call delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            try {
+                // --- SIMULATED GEMINI API CALL for AI Analysis and Recommended Action ---
+                // In a real application, this would be a server-side call to avoid exposing API keys.
+                // The prompt would be more sophisticated, potentially including image analysis.
+
+                let recommendedAction = "Assess on-site for detailed action.";
+
+                if (defectType === "Pothole") {
+                    if (severity === "Critical") recommendedAction = "Immediate emergency patching required.";
+                    else if (severity === "High") recommendedAction = "Schedule patching within 7 days.";
+                    else recommendedAction = "Monitor, schedule routine patching.";
+                } else if (defectType === "Culvert Blockage") {
+                    if (severity === "Critical") recommendedAction = "Urgent debris removal and flow restoration.";
+                    else if (severity === "High") recommendedAction = "Schedule clearing within 3 days to prevent flooding.";
+                    else recommendedAction = "Schedule routine culvert inspection and clearing.";
+                } else if (defectType === "Cracks (Road)") {
+                    if (severity === "Critical") recommendedAction = "Urgent crack sealing and structural assessment.";
+                    else if (severity === "High") recommendedAction = "Schedule crack sealing within 14 days.";
+                    else recommendedAction = "Monitor crack progression, consider sealing during next maintenance cycle.";
+                } else if (defectType === "Shoulder Erosion") {
+                    if (severity === "Critical") recommendedAction = "Immediate shoulder repair to prevent further damage.";
+                    else if (severity === "High") recommendedAction = "Schedule shoulder reinstatement within 7 days.";
+                    else recommendedAction = "Monitor shoulder stability, plan for minor repairs.";
+                } else if (defectType === "Drainage Issue") {
+                    if (severity === "Critical") recommendedAction = "Urgent drainage system overhaul to prevent waterlogging.";
+                    else if (severity === "High") recommendedAction = "Schedule drainage channel clearing and repair within 5 days.";
+                    else recommendedAction = "Monitor drainage, plan for routine maintenance.";
+                } else if (defectType === "Vegetation Overgrowth") {
+                    recommendedAction = "Schedule routine bush clearing for visibility and drainage.";
+                } else if (defectType === "Bridge Damage") {
+                    if (severity === "Critical") recommendedAction = "Immediate bridge closure and structural engineering assessment.";
+                    else if (severity === "High") recommendedAction = "Urgent structural assessment and temporary support.";
+                    else recommendedAction = "Schedule detailed bridge inspection.";
+                } else {
+                    recommendedAction = "Further investigation required for this defect type.";
+                }
+
+                aiGeneratedText = `**AI Analysis:** Detected ${defectType} with ${severity} severity. **Recommended Action:** ${recommendedAction}`;
+
+
+                // Update the report in Firestore with the AI response
+                const reportDocRef = doc(db, `artifacts/${appId}/public/data/reports`, reportId);
+                await updateDoc(reportDocRef, { aiResponse: aiGeneratedText });
+
+                aiResponseDisplay.innerHTML = aiGeneratedText; // Display AI response
+                showToast("AI analysis complete!", "info");
+
+            } catch (error) {
+                console.error("Error processing report with AI:", error);
+                aiResponseDisplay.innerHTML = `<p class="text-red-500">AI processing failed: ${error.message}</p>`;
+                showToast("AI analysis failed.", "error");
+            } finally {
+                aiLoadingSpinner.classList.add('hidden'); // Hide spinner for AI analysis
+            }
+        }
+
+
+        // --- Dashboard Chart Generation ---
+        function renderDashboardCharts(reports) {
+            dashboardChartsContainer.innerHTML = ''; // Clear existing charts
+
+            if (reports.length === 0) {
+                dashboardChartsContainer.innerHTML = '<p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>';
+                return;
+            }
+
+            // Total Reports Metric
+            dashboardChartsContainer.innerHTML += `
+                <div class="metric-box">
+                    <div class="metric-value">${reports.length}</div>
+                    <div class="metric-label">Total Reports</div>
+                </div>
+            `;
+
+            // 1. Defects by Severity (Pie Chart)
+            const severityCounts = { 'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0 }; 
+            reports.forEach(report => {
+                const severity = report.severity;
+                if (severityCounts.hasOwnProperty(severity)) {
+                    severityCounts[severity]++;
+                }
+            });
+
+            let totalSeverityReports = 0;
+            for (const key in severityCounts) {
+                totalSeverityReports += severityCounts[key];
+            }
+
+            let severityPieChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Defects by Severity</h3>
+                <div class="pie-chart-container">`;
+            
+            let currentAngle = 0;
+            const orderedSeverities = ['Critical', 'High', 'Medium', 'Low']; // Maintain order for slices
+
+            orderedSeverities.forEach(severity => {
+                const count = severityCounts[severity];
+                if (count > 0) {
+                    const percentage = (count / totalSeverityReports);
+                    const sliceAngle = percentage * 360;
+                    const nextAngle = currentAngle + sliceAngle;
+
+                    severityPieChartHtml += `
+                        <div class="pie-slice" style="background: conic-gradient(
+                            ${getSeverityColor(severity)} ${currentAngle}deg ${nextAngle}deg,
+                            transparent ${nextAngle}deg 360deg
+                        );"></div>
+                    `;
+                    currentAngle = nextAngle;
+                }
+            });
+            severityPieChartHtml += `</div><ul class="pie-legend">`;
+            orderedSeverities.forEach(severity => {
+                const count = severityCounts[severity];
+                if (count > 0) {
+                    severityPieChartHtml += `
+                        <li class="pie-legend-item">
+                            <span class="pie-legend-color" style="background-color: ${getSeverityColor(severity)};"></span>
+                            ${severity} (${count})
+                        </li>
+                    `;
+                }
+            });
+            severityPieChartHtml += `</ul></div>`;
+            dashboardChartsContainer.innerHTML += severityPieChartHtml;
+
+
+            // 2. Defects by Type (Bar Chart)
+            const defectTypeCounts = {};
+            reports.forEach(report => {
+                const type = report.defectType || 'Unknown';
+                defectTypeCounts[type] = (defectTypeCounts[type] || 0) + 1;
+            });
+
+            let defectTypeChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Defects by Type</h3>
+                <div class="bar-chart">`;
+            const maxTypeCount = Math.max(...Object.values(defectTypeCounts));
+            for (const type in defectTypeCounts) {
+                const percentage = (defectTypeCounts[type] / maxTypeCount) * 100;
+                defectTypeChartHtml += `
+                    <div class="bar-item">
+                        <span class="bar-label">${type}</span>
+                        <div class="flex-grow bg-gray-200 rounded-lg">
+                            <div class="bar-fill" style="width: ${percentage}%;">
+                                <span class="bar-value">${defectTypeCounts[type]}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            defectTypeChartHtml += `</div></div>`;
+            dashboardChartsContainer.innerHTML += defectTypeChartHtml;
+
+
+            // 3. Reports by Reporter Role (Bar Chart)
+            const roleCounts = {};
+            reports.forEach(report => {
+                const role = report.userRole || 'Unknown';
+                roleCounts[role] = (roleCounts[role] || 0) + 1;
+            });
+
+            let roleChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Reports by Reporter Role</h3>
+                <div class="bar-chart">`;
+            const maxRoleCount = Math.max(...Object.values(roleCounts));
+            for (const role in roleCounts) {
+                const percentage = (roleCounts[role] / maxRoleCount) * 100;
+                roleChartHtml += `
+                    <div class="bar-item">
+                        <span class="bar-label">${role}</span>
+                        <div class="flex-grow bg-gray-200 rounded-lg">
+                            <div class="bar-fill" style="width: ${percentage}%; background-color: #9b59b6;">
+                                <span class="bar-value">${roleCounts[role]}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            roleChartHtml += `</div></div>`;
+            dashboardChartsContainer.innerHTML += roleChartHtml;
+
+            // 4. Reports by Assigned Team (Bar Chart)
+            const teamCounts = {};
+            reports.forEach(report => {
+                const team = report.assignedTeam || 'Unassigned';
+                teamCounts[team] = (teamCounts[team] || 0) + 1;
+            });
+
+            let teamChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Reports by Assigned Team</h3>
+                <div class="bar-chart">`;
+            const maxTeamCount = Math.max(...Object.values(teamCounts));
+            for (const team in teamCounts) {
+                const percentage = (teamCounts[team] / maxTeamCount) * 100;
+                teamChartHtml += `
+                    <div class="bar-item">
+                        <span class="bar-label">${team}</span>
+                        <div class="flex-grow bg-gray-200 rounded-lg">
+                            <div class="bar-fill" style="width: ${percentage}%; background-color: #1abc9c;">
+                                <span class="bar-value">${teamCounts[team]}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            teamChartHtml += `</div></div>`;
+            dashboardChartsContainer.innerHTML += teamChartHtml;
+
+            // 5. Map Visualization (Static Google Map)
+            let mapMarkers = '';
+            let centerLat = 0;
+            let centerLng = 0;
+            let validLocationsCount = 0;
+
+            reports.forEach(report => {
+                if (report.latitude && report.longitude) {
+                    mapMarkers += `&markers=color:${getSeverityColor(report.severity)}%7Clabel:${report.defectType.charAt(0)}%7C${report.latitude},${report.longitude}`;
+                    centerLat += report.latitude;
+                    centerLng += report.longitude;
+                    validLocationsCount++;
+                }
+            });
+
+            if (validLocationsCount > 0) {
+                centerLat /= validLocationsCount;
+                centerLng /= validLocationsCount;
+            } else {
+                // Default to a central point in Kenya if no valid locations
+                centerLat = -0.0236; // Approx center of Kenya
+                centerLng = 37.9062;
+            }
+
+            const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${centerLat},${centerLng}&zoom=6&size=600x300&maptype=roadmap${mapMarkers}&key=YOUR_GOOGLE_MAPS_API_KEY_HERE`;
+            // Note: Replace 'YOUR_GOOGLE_MAPS_API_KEY_HERE' with your actual API key for production.
+            // For basic static maps, a key might not be strictly required for very low usage, but it's best practice.
+
+            dashboardChartsContainer.innerHTML += `
+                <div class="chart-box flex-grow">
+                    <h3 class="chart-title">Defect Locations (Map View)</h3>
+                    <div class="map-placeholder">
+                        <a href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}${mapMarkers.replace(/&markers=color:[^%]*%7Clabel:[^%]*%7C/g, '&query=')}" target="_blank" rel="noopener noreferrer">
+                            <img src="${staticMapUrl}" alt="Defect Locations Map" onerror="this.onerror=null;this.src='https://placehold.co/600x300/e0e0e0/777777?text=Interactive+Map+Coming+Soon';">
+                        </a>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2 text-center">
+                        (This is a static map. For a fully interactive map, you would need to integrate with Google Maps API and provide your own API key.)
+                        <br>Click the map to open in Google Maps.
+                    </p>
+                </div>
+            `;
+        }
+
+
+        // --- Event Listeners ---
+        simulateMessageBtn.addEventListener('click', async () => { // Made async to handle file reading
+            console.log("Submit button clicked."); // Log for debugging
+            const message = whatsappMessageInput.value.trim();
+            const imageFile = imageUploadInput.files[0]; // Get the uploaded file
+            const defectType = defectTypeSelect.value;
+            const severity = severitySelect.value;
+            const kmPost = kmPostInput.value.trim();
+            const assetId = assetIdInput.value.trim();
+            const assignedTeam = assignedTeamInput.value.trim();
+            const userRole = userRoleSelect.value; // Get the selected user role
+            const latitude = parseFloat(latitudeInput.value); // New
+            const longitude = parseFloat(longitudeInput.value); // New
+
+            let finalImageUrl = ''; // Initialize as empty string, no longer from URL input
+
+            // If a file is uploaded, convert it to Base64
+            if (imageFile) {
+                if (!imageFile.type.startsWith('image/')) {
+                    showToast("Please upload an image file (e.g., JPEG, PNG).", "error");
+                    return;
+                }
+                if (imageFile.size > 1024 * 1024 * 0.5) { // Limit to 500KB for Firestore document size
+                    showToast("Image file is too large. Please upload an image smaller than 500KB.", "error");
+                    return;
+                }
+                try {
+                    finalImageUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(imageFile);
+                    });
+                } catch (error) {
+                    console.error("Error reading image file:", error);
+                    showToast("Failed to read image file. Please try again.", "error");
+                    return;
+                }
+            }
+
+            if (!message && !finalImageUrl) {
+                showToast("Please enter a description OR upload an image to submit a report.", "error");
+                return;
+            }
+            if (defectType === "") {
+                showToast("Please select a Defect Type.", "error");
+                return;
+            }
+            if (severity === "") {
+                showToast("Please select a Severity Level.", "error");
+                return;
+            }
+            if (userRole === "") { // New validation for user role
+                showToast("Please select your Role.", "error");
+                return;
+            }
+            if (isNaN(latitude) || isNaN(longitude)) {
+                 showToast("Please enter valid numbers for Latitude and Longitude.", "error");
+                 return;
+            }
+
+
+            const reportData = {
+                message: message,
+                imageUrl: finalImageUrl, // Use the final image URL (from file upload)
+                defectType: defectType,
+                severity: severity,
+                kmPost: kmPost,
+                assetId: assetId,
+                status: "Reported", // Default status
+                assignedTeam: assignedTeam || "Unassigned", // Default if not provided
+                userRole: userRole, // Include the selected user role
+                latitude: latitude, // New
+                longitude: longitude, // New
+                submittedAt: new Date().toISOString() // Client-side timestamp for immediate display
+            };
+
+            addReport(reportData);
+            // Clear inputs after submission
+            whatsappMessageInput.value = '';
+            imageUploadInput.value = ''; // Clear file input
+            defectTypeSelect.value = ''; // Reset to default "Select Type"
+            severitySelect.value = ''; // Reset to default "Select Severity"
+            kmPostInput.value = '';
+            assetIdInput.value = '';
+            userRoleSelect.value = ''; // Reset user role
+            assignedTeamInput.value = ''; // Clear assigned team
+            latitudeInput.value = ''; // Clear latitude
+            longitudeInput.value = ''; // Clear longitude
+        });
+
+        // Search/Filter event listener
+        searchInput.addEventListener('keyup', filterReports);
+
+
+        // --- Export to CSV Function ---
+        exportCsvBtn.addEventListener('click', () => {
+            const rows = reportsContainer.querySelectorAll('table tr');
+            if (rows.length === 0 || !reportsContainer.querySelector('table')) {
+                showToast("No data to export.", "info");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            const headers = [];
+            // Get headers from the table's th elements
+            reportsContainer.querySelectorAll('table th').forEach(th => headers.push(th.innerText));
+            csvContent += headers.join(',') + '\n';
+
+            // Get data from table body rows
+            reportsContainer.querySelectorAll('table tbody tr').forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td').forEach((cell, index) => {
+                    let cellText;
+                    // For the status dropdown, get the selected value
+                    if (cell.querySelector('.status-dropdown')) { // Check if it's the status dropdown cell
+                        const selectElement = cell.querySelector('.status-dropdown');
+                        cellText = selectElement ? selectElement.value : cell.innerText;
+                    } else {
+                        cellText = cell.innerText;
+                    }
+                    
+                    // Handle commas, quotes, and newlines in cell data for CSV
+                    if (cellText.includes(',') || cellText.includes('"') || cellText.includes('\n')) {
+                        cellText = '"' + cellText.replace(/"/g, '""') + '"';
+                    }
+                    rowData.push(cellText);
+                });
+                csvContent += rowData.join(',') + '\n';
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "keNHA_reports.csv");
+            document.body.appendChild(link); // Required for Firefox
+            link.click();
+            document.body.removeChild(link); // Clean up
+            showToast("Reports exported to CSV.", "success");
+        });
+
+        // --- Export to PDF Function ---
+        exportPdfBtn.addEventListener('click', async () => {
+            const input = document.getElementById('reportsTable'); // Get the table element
+            if (!input) {
+                showToast("No reports table found to export.", "info");
+                return;
+            }
+
+            // Temporarily hide image elements in the table to avoid issues with html2canvas rendering large Base64 images
+            const images = input.querySelectorAll('img');
+            images.forEach(img => img.style.display = 'none'); // Hide images
+
+            // Show a loading message
+            aiResponseDisplay.innerHTML = 'Generating PDF... Please wait. <span class="loading-spinner"></span>';
+            aiLoadingSpinner.classList.remove('hidden');
+            showToast('Generating PDF...', 'info', 5000); // Show toast for longer duration
+
+            try {
+                // Use html2canvas to render the table as a canvas
+                const canvas = await html2canvas(input, { scale: 2 }); // Scale for better resolution
+
+                // Re-show images after canvas generation
+                images.forEach(img => img.style.display = 'block'); // Show images again
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4'); // 'l' for landscape, A4 size
+
+                const imgWidth = 280; // A4 landscape width in mm (approx 297 - margins)
+                const pageHeight = 200; // A4 landscape height in mm (approx 210 - margins)
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                pdf.save("keNHA_reports.pdf");
+                aiResponseDisplay.innerHTML = 'PDF generated successfully!';
+                showToast("PDF generated successfully!", "success");
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                aiResponseDisplay.innerHTML = `<p class="text-red-500">Error generating PDF: ${error.message}</p>`;
+                showToast(`Failed to generate PDF: ${error.message}`, "error");
+            } finally {
+                aiLoadingSpinner.classList.add('hidden');
+                // Ensure images are visible again even if there was an error
+                images.forEach(img => img.style.display = 'block');
+            }
+        });
+
+
+        // Initial setup for UI elements (hide AI spinner initially)
+        document.addEventListener('DOMContentLoaded', () => {
+            aiLoadingSpinner.classList.add('hidden');
+        });
+
+    </script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div id="toast-container"></div> <!-- Toast container -->
+    <div class="container bg-white rounded-xl shadow-lg p-8 md:p-10 lg:p-12">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-800 mb-6">
+            AI-Powered Infrastructure Dashboard for KeNHA
+        </h1>
+        <p id="userIdDisplay" class="text-sm text-gray-600 text-center mb-6 p-2 bg-blue-50 rounded-md">
+            Loading User ID...
+        </p>
+
+        <!-- Submit Report Section -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-blue-700">Submit Road Defect Report</h2>
+            <p class="text-gray-600 mb-4">
+                Fill in the details below to submit an inspection report.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="userRole" class="text-blue-800">Your Role</label>
+                    <select id="userRole" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Your Role</option>
+                        <option value="Regional Director (RD)">Regional Director (RD)</option>
+                        <option value="Inspector">Inspector</option>
+                        <option value="Assistant Engineer (Ass Eng)">Assistant Engineer (Ass Eng)</option>
+                        <option value="Foreman">Foreman</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="defectType" class="text-blue-800">Defect Type</label>
+                    <select id="defectType" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Defect Type</option>
+                        <option value="Pothole">Pothole</option>
+                        <option value="Cracks (Road)">Cracks (Road)</option>
+                        <option value="Culvert Blockage">Culvert Blockage</option>
+                        <option value="Shoulder Erosion">Shoulder Erosion</option>
+                        <option value="Drainage Issue">Drainage Issue</option>
+                        <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
+                        <option value="Bridge Damage">Bridge Damage</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="severity" class="text-blue-800">Severity Level</label>
+                    <select id="severity" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Severity</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
+                    <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div class="input-group">
+                    <label for="latitude" class="text-blue-800">Latitude</label>
+                    <input type="text" id="latitude" placeholder="e.g., -1.2921" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div class="input-group">
+                    <label for="longitude" class="text-blue-800">Longitude</label>
+                    <input type="text" id="longitude" placeholder="e.g., 36.8219" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+            </div>
+            <div class="input-group mb-4">
+                <label for="assetId" class="text-blue-800">Asset ID (for Culverts/Bridges)</label>
+                <input type="text" id="assetId" placeholder="e.g., C27-CULV-003" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="input-group mb-4">
+                <label for="whatsappMessage" class="text-blue-800">Detailed Description</label>
+                <textarea id="whatsappMessage" rows="3" placeholder="Enter defect details here, e.g., 'Large pothole causing traffic swerving near Odienya stream.'" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300"></textarea>
+            </div>
+            <div class="input-group mb-4">
+                <label for="imageUpload" class="text-blue-800">Upload Image (Optional)</label>
+                <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="input-group mb-6">
+                <label for="assignedTeam" class="text-blue-800">Assigned Team/Contractor (Optional)</label>
+                <input type="text" id="assignedTeam" placeholder="e.g., Maintenance Team A or XYZ Contractors" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <button id="simulateMessageBtn" class="btn btn-primary flex-grow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                    </svg>
+                    Submit Inspection Report
+                </button>
+                <button id="exportCsvBtn" class="btn btn-secondary flex-grow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Export to CSV (Excel)
+                </button>
+                <button id="exportPdfBtn" class="btn btn-secondary flex-grow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0113 3.414L16.586 7A2 2 0 0118 8.414V16a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V8.414A1 1 0 0015.586 7L12 3.414A1 1 0 0011.414 3H6zM10 8a1 1 0 100 2h4a1 1 0 100-2h-4zm-3 4a1 1 0 100 2h7a1 1 0 100-2H7z" clip-rule="evenodd" />
+                    </svg>
+                    Export to PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Response Section -->
+        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-green-700">AI Analysis & Recommendations</h2>
+            <div id="aiResponseDisplay" class="text-gray-700">
+                AI responses will appear here after a report is submitted.
+            </div>
+            <div id="aiLoadingSpinner" class="hidden loading-spinner mt-4 mx-auto"></div>
+        </div>
+
+        <!-- Snapshot Analysis Section -->
+        <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-purple-700">Snapshot Analysis (Charts)</h2>
+            <div id="dashboardCharts" class="chart-container">
+                <p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>
+            </div>
+        </div>
+
+        <!-- Reports Display Section -->
+        <div class="p-6 bg-gray-50 rounded-lg shadow-inner overflow-x-auto">
+            <h2 class="section-title text-gray-700">Recent Road Inspection Reports</h2>
+            <div class="mb-4">
+                <label for="searchInput" class="block text-gray-700 text-sm font-bold mb-2">Search Reports:</label>
+                <input type="text" id="searchInput" placeholder="Search by message, type, severity, etc." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div id="reportsContainer">
+                <!-- Reports will be dynamically loaded here by JavaScript -->
+                <p class="text-gray-500 text-center">Loading reports...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
