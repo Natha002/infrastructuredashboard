@@ -49,7 +49,9 @@
         .input-group input[type="text"],
         .input-group textarea,
         .input-group select,
-        .input-group input[type="file"] { /* Added file input */
+        .input-group input[type="file"],
+        .input-group input[type="email"], /* Added for login */
+        .input-group input[type="password"] { /* Added for login */
             width: 100%;
             padding: 12px;
             border: 1px solid #dcdcdc;
@@ -61,7 +63,9 @@
         .input-group input[type="text"]:focus,
         .input-group textarea:focus,
         .input-group select:focus,
-        .input-group input[type="file"]:focus { /* Added file input */
+        .input-group input[type="file"]:focus,
+        .input-group input[type="email"]:focus, /* Added for login */
+        .input-group input[type="password"]:focus { /* Added for login */
             outline: none;
             border-color: #3498db;
         }
@@ -359,7 +363,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase config and app ID
@@ -386,6 +390,7 @@
 
         let userId = null; // To store the current user's ID
         let isAuthReady = false; // Flag to ensure auth is ready before Firestore ops
+        const ADMIN_EMAIL = "admin@kenha.com"; // Hardcoded admin email for demonstration
 
         // Get UI elements
         const userIdDisplay = document.getElementById('userIdDisplay');
@@ -406,6 +411,18 @@
         const dashboardChartsContainer = document.getElementById('dashboardCharts');
         const searchInput = document.getElementById('searchInput');
         const toastContainer = document.getElementById('toast-container');
+        const logoutBtn = document.getElementById('logoutBtn'); // New logout button
+        const backToFormBtn = document.getElementById('backToFormBtn'); // Back to form button
+
+        // Login page elements
+        const loginEmailInput = document.getElementById('loginEmail');
+        const loginPasswordInput = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+
+        // Page containers
+        const loginPage = document.getElementById('loginPage');
+        const formPage = document.getElementById('formPage');
+        const adminDashboardPage = document.getElementById('adminDashboardPage');
 
 
         // Disable button initially
@@ -424,23 +441,36 @@
                 simulateMessageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
                 </svg> Submit Inspection Report`; // Restore button text
-                // Once authenticated, start listening for reports
-                listenForReports();
+                
+                // Check if the logged-in user is an admin
+                if (user.email === ADMIN_EMAIL) {
+                    showPage('adminDashboardPage');
+                    if (logoutBtn) logoutBtn.classList.remove('hidden');
+                } else {
+                    showPage('formPage');
+                    if (logoutBtn) logoutBtn.classList.add('hidden'); // Hide logout for non-admins
+                }
+                listenForReports(); // Start listening for reports regardless of role
             } else {
                 console.log("No user signed in. Attempting anonymous sign-in...");
                 try {
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
                         console.log("Signed in with custom token.");
+                        // After custom token sign-in, still show form page by default
+                        showPage('formPage');
                     } else {
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously.");
+                        showPage('formPage');
                     }
+                    if (logoutBtn) logoutBtn.classList.add('hidden'); // Hide logout if not logged in
                 } catch (error) {
                     console.error("Firebase authentication error:", error);
                     userIdDisplay.textContent = `Authentication Error: ${error.message}. **Action Required: Please enable 'Anonymous' sign-in method in your Firebase project's Authentication settings.**`;
                     simulateMessageBtn.disabled = true; // Keep disabled on error
                     simulateMessageBtn.textContent = 'Error Initializing';
+                    showPage('loginPage'); // Show login page on auth error
                 }
             }
         });
@@ -469,6 +499,29 @@
                 toast.classList.remove('show');
                 toast.addEventListener('transitionend', () => toast.remove());
             }, duration);
+        }
+
+        /**
+         * Toggles visibility of different pages/sections.
+         * @param {string} pageId - The ID of the page to show ('loginPage', 'formPage', or 'adminDashboardPage').
+         */
+        function showPage(pageId) {
+            loginPage.classList.add('hidden');
+            formPage.classList.add('hidden');
+            adminDashboardPage.classList.add('hidden');
+
+            if (pageId === 'loginPage') {
+                loginPage.classList.remove('hidden');
+            } else if (pageId === 'formPage') {
+                formPage.classList.remove('hidden');
+            } else if (pageId === 'adminDashboardPage') {
+                adminDashboardPage.classList.remove('hidden');
+                // Scroll to charts when dashboard is shown
+                const chartsSection = document.getElementById('dashboardCharts');
+                if (chartsSection) {
+                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
         }
 
         // Helper to convert severity to a numerical value for sorting
@@ -785,10 +838,12 @@
                 console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
-                // Auto-scroll to the charts section immediately after submission
-                const chartsSection = document.getElementById('dashboardCharts');
-                if (chartsSection) {
-                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // After successful submission, if the user is an admin, show the admin dashboard
+                if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL) {
+                    showPage('adminDashboardPage');
+                } else {
+                    // Otherwise, remain on the form page
+                    showPage('formPage');
                 }
 
                 // Trigger AI processing immediately after adding the report
@@ -1141,6 +1196,45 @@
         // Search/Filter event listener
         searchInput.addEventListener('keyup', filterReports);
 
+        // Back to Form button listener
+        if (backToFormBtn) { // Check if element exists before adding listener
+            backToFormBtn.addEventListener('click', () => {
+                showPage('formPage');
+            });
+        }
+
+        // Login button listener
+        if (loginBtn) { // Check if element exists before adding listener
+            loginBtn.addEventListener('click', async () => {
+                const email = loginEmailInput.value;
+                const password = loginPasswordInput.value;
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log("User logged in:", userCredential.user.email);
+                    showToast("Logged in successfully!", "success");
+                    // After login, onAuthStateChanged will handle page redirection
+                } catch (error) {
+                    console.error("Login error:", error);
+                    showToast(`Login failed: ${error.message}`, "error");
+                }
+            });
+        }
+
+        // Logout button listener
+        if (logoutBtn) { // Check if element exists before adding listener
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                    console.log("User logged out.");
+                    showToast("Logged out successfully!", "info");
+                    showPage('loginPage'); // Redirect to login page after logout
+                } catch (error) {
+                    console.error("Logout error:", error);
+                    showToast(`Logout failed: ${error.message}`, "error");
+                }
+            });
+        }
+
 
         // --- Export to CSV Function ---
         exportCsvBtn.addEventListener('click', () => {
@@ -1253,6 +1347,8 @@
         // Initial setup for UI elements (hide AI spinner initially)
         document.addEventListener('DOMContentLoaded', () => {
             aiLoadingSpinner.classList.add('hidden');
+            // The onAuthStateChanged listener will determine which page to show initially
+            // No explicit showPage('formPage') here, as auth state will dictate.
         });
 
     </script>
@@ -1267,77 +1363,119 @@
             Loading User ID...
         </p>
 
-        <!-- Submit Report Section -->
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
-            <h2 class="section-title text-blue-700">Submit Road Defect Report</h2>
-            <p class="text-gray-600 mb-4">
-                Fill in the details below to submit an inspection report.
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div class="input-group">
-                    <label for="userRole" class="text-blue-800">Your Role</label>
-                    <select id="userRole" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                        <option value="">Select Your Role</option>
-                        <option value="Regional Director (RD)">Regional Director (RD)</option>
-                        <option value="Inspector">Inspector</option>
-                        <option value="Assistant Engineer (Ass Eng)">Assistant Engineer (Ass Eng)</option>
-                        <option value="Foreman">Foreman</option>
-                        <option value="Other">Other</option>
-                    </select>
+        <!-- Login Page -->
+        <div id="loginPage" class="page hidden">
+            <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+                <h2 class="section-title text-blue-700">Admin Login</h2>
+                <p class="text-gray-600 mb-4">
+                    Please log in with your admin credentials to access the dashboard.
+                    <br>
+                    **For demo purposes, use Email:** `admin@kenha.com` **Password:** `password`
+                </p>
+                <div class="input-group mb-4">
+                    <label for="loginEmail" class="text-blue-800">Email</label>
+                    <input type="email" id="loginEmail" placeholder="admin@kenha.com" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
                 </div>
-                <div class="input-group">
-                    <label for="defectType" class="text-blue-800">Defect Type</label>
-                    <select id="defectType" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                        <option value="">Select Defect Type</option>
-                        <option value="Pothole">Pothole</option>
-                        <option value="Cracks (Road)">Cracks (Road)</option>
-                        <option value="Culvert Blockage">Culvert Blockage</option>
-                        <option value="Shoulder Erosion">Shoulder Erosion</option>
-                        <option value="Drainage Issue">Drainage Issue</option>
-                        <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
-                        <option value="Bridge Damage">Bridge Damage</option>
-                        <option value="Warning Signs (Damaged/Missing)">Warning Signs (Damaged/Missing)</option>
-                        <option value="Other">Other</option>
-                    </select>
+                <div class="input-group mb-6">
+                    <label for="loginPassword" class="text-blue-800">Password</label>
+                    <input type="password" id="loginPassword" placeholder="password" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
                 </div>
-                <div class="input-group">
-                    <label for="severity" class="text-blue-800">Severity Level</label>
-                    <select id="severity" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                        <option value="">Select Severity</option>
-                        <option value="Critical">Critical</option>
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
-                    <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-            </div>
-            <div class="input-group mb-4">
-                <label for="assetId" class="text-blue-800">Asset ID (for Culverts/Bridges)</label>
-                <input type="text" id="assetId" placeholder="e.g., C27-CULV-003" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-            </div>
-            <div class="input-group mb-4">
-                <label for="whatsappMessage" class="text-blue-800">Detailed Description</label>
-                <textarea id="whatsappMessage" rows="3" placeholder="Enter defect details here, e.g., 'Large pothole causing traffic swerving near Odienya stream.'" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300"></textarea>
-            </div>
-            <div class="input-group mb-4">
-                <label for="imageUpload" class="text-blue-800">Upload Image (Optional)</label>
-                <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-            </div>
-            <div class="input-group mb-6">
-                <label for="assignedTeam" class="text-blue-800">Assigned Team/Contractor (Optional)</label>
-                <input type="text" id="assignedTeam" placeholder="e.g., Maintenance Team A or XYZ Contractors" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-            </div>
-            <div class="flex flex-col md:flex-row gap-4">
-                <button id="simulateMessageBtn" class="btn btn-primary flex-grow">
+                <button id="loginBtn" class="btn btn-primary w-full">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                     </svg>
-                    Submit Inspection Report
+                    Login as Admin
                 </button>
+            </div>
+        </div>
+
+        <!-- Form Page -->
+        <div id="formPage" class="page hidden">
+            <div class="flex justify-end mb-4">
+                <button id="logoutBtn" class="btn btn-secondary hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                    </svg>
+                    Logout
+                </button>
+            </div>
+            <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+                <h2 class="section-title text-blue-700">Submit Road Defect Report</h2>
+                <p class="text-gray-600 mb-4">
+                    Fill in the details below to submit an inspection report.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="input-group">
+                        <label for="userRole" class="text-blue-800">Your Role</label>
+                        <select id="userRole" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                            <option value="">Select Your Role</option>
+                            <option value="Regional Director (RD)">Regional Director (RD)</option>
+                            <option value="Inspector">Inspector</option>
+                            <option value="Assistant Engineer (Ass Eng)">Assistant Engineer (Ass Eng)</option>
+                            <option value="Foreman">Foreman</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="defectType" class="text-blue-800">Defect Type</label>
+                        <select id="defectType" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                            <option value="">Select Defect Type</option>
+                            <option value="Pothole">Pothole</option>
+                            <option value="Cracks (Road)">Cracks (Road)</option>
+                            <option value="Culvert Blockage">Culvert Blockage</option>
+                            <option value="Shoulder Erosion">Shoulder Erosion</option>
+                            <option value="Drainage Issue">Drainage Issue</option>
+                            <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
+                            <option value="Bridge Damage">Bridge Damage</option>
+                            <option value="Warning Signs (Damaged/Missing)">Warning Signs (Damaged/Missing)</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="severity" class="text-blue-800">Severity Level</label>
+                        <select id="severity" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                            <option value="">Select Severity</option>
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
+                        <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                    </div>
+                </div>
+                <div class="input-group mb-4">
+                    <label for="assetId" class="text-blue-800">Asset ID (for Culverts/Bridges)</label>
+                    <input type="text" id="assetId" placeholder="e.g., C27-CULV-003" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="whatsappMessage" class="text-blue-800">Detailed Description</label>
+                    <textarea id="whatsappMessage" rows="3" placeholder="Enter defect details here, e.g., 'Large pothole causing traffic swerving near Odienya stream.'" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300"></textarea>
+                </div>
+                <div class="input-group mb-4">
+                    <label for="imageUpload" class="text-blue-800">Upload Image (Optional)</label>
+                    <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div class="input-group mb-6">
+                    <label for="assignedTeam" class="text-blue-800">Assigned Team/Contractor (Optional)</label>
+                    <input type="text" id="assignedTeam" placeholder="e.g., Maintenance Team A or XYZ Contractors" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <button id="simulateMessageBtn" class="btn btn-primary flex-grow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                        </svg>
+                        Submit Inspection Report
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard Page -->
+        <div id="adminDashboardPage" class="page hidden">
+            <div class="flex flex-col md:flex-row gap-4 mb-8">
                 <button id="exportCsvBtn" class="btn btn-secondary flex-grow">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -1350,36 +1488,48 @@
                     </svg>
                     Export to PDF
                 </button>
+                 <button id="backToFormBtn" class="btn btn-secondary flex-grow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Back to Form
+                </button>
+                <button id="logoutBtn" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                    </svg>
+                    Logout
+                </button>
             </div>
-        </div>
 
-        <!-- AI Response Section -->
-        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
-            <h2 class="section-title text-green-700">AI Analysis & Recommendations</h2>
-            <div id="aiResponseDisplay" class="text-gray-700">
-                AI responses will appear here after a report is submitted.
+            <!-- AI Response Section -->
+            <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
+                <h2 class="section-title text-green-700">AI Analysis & Recommendations</h2>
+                <div id="aiResponseDisplay" class="text-gray-700">
+                    AI responses will appear here after a report is submitted.
+                </div>
+                <div id="aiLoadingSpinner" class="hidden loading-spinner mt-4 mx-auto"></div>
             </div>
-            <div id="aiLoadingSpinner" class="hidden loading-spinner mt-4 mx-auto"></div>
-        </div>
 
-        <!-- Snapshot Analysis Section -->
-        <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
-            <h2 class="section-title text-purple-700">Snapshot Analysis (Charts)</h2>
-            <div id="dashboardCharts" class="chart-container">
-                <p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>
+            <!-- Snapshot Analysis Section -->
+            <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
+                <h2 class="section-title text-purple-700">Snapshot Analysis (Charts)</h2>
+                <div id="dashboardCharts" class="chart-container">
+                    <p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Reports Display Section -->
-        <div class="p-6 bg-gray-50 rounded-lg shadow-inner overflow-x-auto">
-            <h2 class="section-title text-gray-700">Recent Road Inspection Reports</h2>
-            <div class="mb-4">
-                <label for="searchInput" class="block text-gray-700 text-sm font-bold mb-2">Search Reports:</label>
-                <input type="text" id="searchInput" placeholder="Search by message, type, severity, etc." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300">
-            </div>
-            <div id="reportsContainer">
-                <!-- Reports will be dynamically loaded here by JavaScript -->
-                <p class="text-gray-500 text-center">Loading reports...</p>
+            <!-- Reports Display Section -->
+            <div class="p-6 bg-gray-50 rounded-lg shadow-inner overflow-x-auto">
+                <h2 class="section-title text-gray-700">Recent Road Inspection Reports</h2>
+                <div class="mb-4">
+                    <label for="searchInput" class="block text-gray-700 text-sm font-bold mb-2">Search Reports:</label>
+                    <input type="text" id="searchInput" placeholder="Search by message, type, severity, etc." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300">
+                </div>
+                <div id="reportsContainer">
+                    <!-- Reports will be dynamically loaded here by JavaScript -->
+                    <p class="text-gray-500 text-center">Loading reports...</p>
+                </div>
             </div>
         </div>
     </div>
