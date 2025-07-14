@@ -386,6 +386,7 @@
 
         let userId = null; // To store the current user's ID
         let isAuthReady = false; // Flag to ensure auth is ready before Firestore ops
+        let currentAppUserRole = null; // To store the role of the user currently using the app
 
         // Get UI elements
         const userIdDisplay = document.getElementById('userIdDisplay');
@@ -406,6 +407,7 @@
         const dashboardChartsContainer = document.getElementById('dashboardCharts');
         const searchInput = document.getElementById('searchInput');
         const toastContainer = document.getElementById('toast-container');
+        const backToFormBtn = document.getElementById('backToFormBtn'); // Get the new back button
 
         const formPage = document.getElementById('formPage');
         const dashboardPage = document.getElementById('dashboardPage');
@@ -483,8 +485,21 @@
                 formPage.classList.remove('hidden');
                 dashboardPage.classList.add('hidden');
             } else if (pageId === 'dashboardPage') {
-                formPage.classList.add('hidden');
-                dashboardPage.classList.remove('hidden');
+                // Only show dashboard if current user is an admin
+                if (currentAppUserRole === 'Regional Director (RD)') {
+                    formPage.classList.add('hidden');
+                    dashboardPage.classList.remove('hidden');
+                    // Scroll to charts only if dashboard is shown
+                    const chartsSection = document.getElementById('dashboardCharts');
+                    if (chartsSection) {
+                        chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } else {
+                    showToast("Access Denied: Dashboard is only visible to Regional Directors.", "error");
+                    // Ensure we stay on the form page if not admin
+                    formPage.classList.remove('hidden');
+                    dashboardPage.classList.add('hidden');
+                }
             }
         }
 
@@ -802,11 +817,8 @@
                 console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
-                // Auto-scroll to the charts section immediately after submission
-                const chartsSection = document.getElementById('dashboardCharts');
-                if (chartsSection) {
-                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                // Show dashboard page for admins, otherwise stay on form
+                showPage('dashboardPage'); // This function now handles the role check and scrolling
 
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
@@ -1085,6 +1097,9 @@
             const assignedTeam = assignedTeamInput.value.trim();
             const userRole = userRoleSelect.value; // Get the selected user role
 
+            // Set the current user's role based on the selection
+            currentAppUserRole = userRole; 
+
             let finalImageUrl = ''; // Initialize as empty string, no longer from URL input
 
             // If a file is uploaded, convert it to Base64
@@ -1157,6 +1172,11 @@
 
         // Search/Filter event listener
         searchInput.addEventListener('keyup', filterReports);
+
+        // Back to Form button listener
+        backToFormBtn.addEventListener('click', () => {
+            showPage('formPage');
+        });
 
 
         // --- Export to CSV Function ---
