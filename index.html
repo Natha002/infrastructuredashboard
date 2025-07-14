@@ -149,11 +149,6 @@
             vertical-align: middle;
             margin-left: 10px;
         }
-        /* Removed @keyframes spin as it's no longer needed */
-        /* @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        } */
         /* Responsive adjustments */
         @media (max-width: 1024px) { /* Adjusted breakpoint for table stacking */
             .reports-table, .reports-table thead, .reports-table tbody, .reports-table th, .reports-table td, .reports-table tr {
@@ -535,7 +530,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 24 * 2), // 2 days ago
                             submittedAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Alpha', aiResponse: 'Immediate emergency patching required.',
-                            latitude: -0.3031, longitude: 36.0800 // Example: Nakuru
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample2', userRole: 'Inspector', defectType: 'Cracks (Road)', severity: 'High',
@@ -544,7 +539,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 24 * 1), // 1 day ago
                             submittedAt: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
                             status: 'In Progress', assignedTeam: 'Team Beta', aiResponse: 'Schedule crack sealing within 14 days.',
-                            latitude: -1.2921, longitude: 36.8219 // Example: Nairobi
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample3', userRole: 'Assistant Engineer (Ass Eng)', defectType: 'Culvert Blockage', severity: 'Critical',
@@ -553,7 +548,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 12), // 12 hours ago
                             submittedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Gamma', aiResponse: 'Urgent debris removal and flow restoration.',
-                            latitude: 0.5143, longitude: 35.2698 // Example: Eldoret
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample4', userRole: 'Inspector', defectType: 'Pothole', severity: 'Medium',
@@ -562,7 +557,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 6), // 6 hours ago
                             submittedAt: new Date(Date.now() - 3600000 * 6).toISOString(),
                             status: 'Resolved', assignedTeam: 'Team Alpha', aiResponse: 'Monitor, schedule routine patching.',
-                            latitude: -0.0236, longitude: 37.9062 // Example: Nanyuki
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample5', userRole: 'Foreman', defectType: 'Shoulder Erosion', severity: 'Low',
@@ -571,7 +566,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 3), // 3 hours ago
                             submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Beta', aiResponse: 'Monitor shoulder stability, plan for minor repairs.',
-                            latitude: -4.0437, longitude: 39.6682 // Example: Mombasa
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample6', userRole: 'Regional Director (RD)', defectType: 'Bridge Damage', severity: 'Critical',
@@ -580,7 +575,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 2), // 2 hours ago
                             submittedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Gamma', aiResponse: 'Immediate bridge closure and structural engineering assessment.',
-                            latitude: 0.2833, longitude: 34.7667 // Example: Kisumu
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample7', userRole: 'Inspector', defectType: 'Pothole', severity: 'High',
@@ -589,7 +584,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 1), // 1 hour ago
                             submittedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Alpha', aiResponse: 'Schedule patching within 7 days.',
-                            latitude: -0.7171, longitude: 37.2530 // Example: Thika
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample8', userRole: 'Foreman', defectType: 'Drainage Issue', severity: 'Medium',
@@ -598,7 +593,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 0.5), // 30 mins ago
                             submittedAt: new Date(Date.now() - 3600000 * 0.5).toISOString(),
                             status: 'In Progress', assignedTeam: 'Team Gamma', aiResponse: 'Monitor drainage, plan for routine maintenance.',
-                            latitude: -0.2833, longitude: 34.5833 // Example: Kisii
+                            // Removed latitude and longitude from sample data
                         },
                         {
                             id: 'sample9', userRole: 'Inspector', defectType: 'Warning Signs (Damaged/Missing)', severity: 'High',
@@ -607,7 +602,7 @@
                             timestamp: new Date(Date.now() - 3600000 * 0.25), // 15 mins ago
                             submittedAt: new Date(Date.now() - 3600000 * 0.25).toISOString(),
                             status: 'Reported', assignedTeam: 'Team Delta', aiResponse: 'Urgent replacement of missing stop sign required for safety.',
-                            latitude: -0.0500, longitude: 34.7500 // Example: Kisumu
+                            // Removed latitude and longitude from sample data
                         }
                     ];
                     allReports = [...sampleReports]; // Use all sample reports if Firestore is empty
@@ -790,12 +785,6 @@
                 console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
-                // Auto-scroll is now handled after AI processing
-                // const chartsSection = document.getElementById('dashboardCharts');
-                // if (chartsSection) {
-                //     chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // }
-
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
             } catch (e) {
@@ -988,103 +977,24 @@
                 `;
             }
             defectTypeChartHtml += `</div></div>`;
-            dashboardChartsContainer.innerHTML += defectTypeChartHtml;
-
-
-            // 3. Reports by Reporter Role (Bar Chart)
-            const roleCounts = {};
-            reports.forEach(report => {
-                const role = report.userRole || 'Unknown';
-                roleCounts[role] = (roleCounts[role] || 0) + 1;
-            });
-
-            let roleChartHtml = `<div class="chart-box">
-                <h3 class="chart-title">Reports by Reporter Role</h3>
-                <div class="bar-chart">`;
-            const maxRoleCount = Math.max(...Object.values(roleCounts));
-            for (const role in roleCounts) {
-                const percentage = (roleCounts[role] / maxRoleCount) * 100;
-                roleChartHtml += `
-                    <div class="bar-item">
-                        <span class="bar-label">${role}</span>
-                        <div class="flex-grow bg-gray-200 rounded-lg">
-                            <div class="bar-fill" style="width: ${percentage}%; background-color: #9b59b6;">
-                                <span class="bar-value">${roleCounts[role]}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            roleChartHtml += `</div></div>`;
-            dashboardChartsContainer.innerHTML += roleChartHtml;
-
-            // 4. Reports by Assigned Team (Bar Chart)
-            const teamCounts = {};
-            reports.forEach(report => {
-                const team = report.assignedTeam || 'Unassigned';
-                teamCounts[team] = (teamCounts[team] || 0) + 1;
-            });
-
-            let teamChartHtml = `<div class="chart-box">
-                <h3 class="chart-title">Reports by Assigned Team</h3>
-                <div class="bar-chart">`;
-            const maxTeamCount = Math.max(...Object.values(teamCounts));
-            for (const team in teamCounts) {
-                const percentage = (teamCounts[team] / maxTeamCount) * 100;
-                teamChartHtml += `
-                    <div class="bar-item">
-                        <span class="bar-label">${team}</span>
-                        <div class="flex-grow bg-gray-200 rounded-lg">
-                            <div class="bar-fill" style="width: ${percentage}%; background-color: #1abc9c;">
-                                <span class="bar-value">${teamCounts[team]}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            teamChartHtml += `</div></div>`;
             dashboardChartsContainer.innerHTML += teamChartHtml;
 
             // 5. Map Visualization (Static Google Map)
-            let mapMarkers = '';
-            let centerLat = 0;
-            let centerLng = 0;
-            let validLocationsCount = 0;
-
-            reports.forEach(report => {
-                // Only add markers if latitude and longitude exist in the report
-                if (report.latitude && report.longitude) {
-                    mapMarkers += `&markers=color:${getSeverityColor(report.severity)}%7Clabel:${report.defectType.charAt(0)}%7C${report.latitude},${report.longitude}`;
-                    centerLat += report.latitude;
-                    centerLng += report.longitude;
-                    validLocationsCount++;
-                }
-            });
-
-            if (validLocationsCount > 0) {
-                centerLat /= validLocationsCount;
-                centerLng /= validLocationsCount;
-            } else {
-                // Default to a central point in Kenya if no valid locations in current reports
-                centerLat = -0.0236; // Approx center of Kenya
-                centerLng = 37.9062;
-            }
-
-            const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${centerLat},${centerLng}&zoom=6&size=600x300&maptype=roadmap${mapMarkers}&key=YOUR_GOOGLE_MAPS_API_KEY_HERE`;
+            // Since Latitude and Longitude inputs are removed, we'll display a generic map of Kenya.
+            const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=-0.0236,37.9062&zoom=6&size=600x300&maptype=roadmap&key=YOUR_GOOGLE_MAPS_API_KEY_HERE`;
             // Note: Replace 'YOUR_GOOGLE_MAPS_API_KEY_HERE' with your actual API key for production.
-            // For basic static maps, a key might not be strictly required for very low usage, but it's best practice.
 
             dashboardChartsContainer.innerHTML += `
                 <div class="chart-box flex-grow">
                     <h3 class="chart-title">Defect Locations (Map View)</h3>
                     <div class="map-placeholder">
-                        <a href="https://www.google.com/maps/search/?api=1&query=${centerLat},${centerLng}${mapMarkers.replace(/&markers=color:[^%]*%7Clabel:[^%]*%7C/g, '&query=')}" target="_blank" rel="noopener noreferrer">
-                            <img src="${staticMapUrl}" alt="Defect Locations Map" onerror="this.onerror=null;this.src='https://placehold.co/600x300/e0e0e0/777777?text=Interactive+Map+Coming+Soon';">
+                        <a href="https://www.google.com/maps/?q=-0.0236,37.9062" target="_blank" rel="noopener noreferrer">
+                            <img src="${staticMapUrl}" alt="Map of Kenya" onerror="this.onerror=null;this.src='https://placehold.co/600x300/e0e0e0/777777?text=Map+View+Not+Available+Without+Location+Data';">
                         </a>
                     </div>
                     <p class="text-sm text-gray-500 mt-2 text-center">
-                        (This is a static map. For a fully interactive map, you would need to integrate with Google Maps API and provide your own API key.)
-                        <br>Click the map to open in Google Maps.
+                        (This is a static map of Kenya. Specific defect locations are not displayed as latitude and longitude inputs have been removed.)
+                        <br>Click the map to open a general view in Google Maps.
                     </p>
                 </div>
             `;
@@ -1156,9 +1066,8 @@
                 status: "Reported", // Default status
                 assignedTeam: assignedTeam || "Unassigned", // Default if not provided
                 userRole: userRole, // Include the selected user role
-                // For demonstration, assign random coordinates within Kenya (Western region focus)
-                latitude: (Math.random() * (1.0 - (-1.0)) + (-1.0)).toFixed(4), // Approx -1.0 to 1.0 for Western Kenya
-                longitude: (Math.random() * (35.0 - 33.0) + 33.0).toFixed(4), // Approx 33.0 to 35.0 for Western Kenya
+                // Latitude and Longitude are no longer collected from input,
+                // so they are removed from the reportData object.
                 submittedAt: new Date().toISOString() // Client-side timestamp for immediate display
             };
 
