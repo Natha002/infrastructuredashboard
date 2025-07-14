@@ -432,6 +432,7 @@
 
         // --- Firebase Authentication ---
         onAuthStateChanged(auth, async (user) => {
+            console.log("onAuthStateChanged triggered. User:", user ? user.email : "null");
             if (user) {
                 userId = user.uid;
                 userIdDisplay.textContent = `Your User ID: ${userId}`;
@@ -444,29 +445,30 @@
                 
                 // Check if the logged-in user is an admin
                 if (user.email === ADMIN_EMAIL) {
+                    console.log("User is admin. Showing admin dashboard.");
                     showPage('adminDashboardPage');
                     if (logoutBtn) logoutBtn.classList.remove('hidden');
                 } else {
+                    console.log("User is not admin. Showing form page.");
                     showPage('formPage');
                     if (logoutBtn) logoutBtn.classList.add('hidden'); // Hide logout for non-admins
                 }
                 listenForReports(); // Start listening for reports regardless of role
             } else {
-                console.log("No user signed in. Attempting anonymous sign-in...");
+                console.log("No user signed in. Attempting anonymous sign-in or showing login page...");
                 try {
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
                         console.log("Signed in with custom token.");
-                        // After custom token sign-in, still show form page by default
-                        showPage('formPage');
+                        // onAuthStateChanged will re-trigger and handle page display
                     } else {
                         await signInAnonymously(auth);
                         console.log("Signed in anonymously.");
-                        showPage('formPage');
+                        // onAuthStateChanged will re-trigger and handle page display
                     }
                     if (logoutBtn) logoutBtn.classList.add('hidden'); // Hide logout if not logged in
                 } catch (error) {
-                    console.error("Firebase authentication error:", error);
+                    console.error("Firebase authentication error during initial sign-in:", error);
                     userIdDisplay.textContent = `Authentication Error: ${error.message}. **Action Required: Please enable 'Anonymous' sign-in method in your Firebase project's Authentication settings.**`;
                     simulateMessageBtn.disabled = true; // Keep disabled on error
                     simulateMessageBtn.textContent = 'Error Initializing';
@@ -506,6 +508,7 @@
          * @param {string} pageId - The ID of the page to show ('loginPage', 'formPage', or 'adminDashboardPage').
          */
         function showPage(pageId) {
+            console.log(`Attempting to show page: ${pageId}`);
             loginPage.classList.add('hidden');
             formPage.classList.add('hidden');
             adminDashboardPage.classList.add('hidden');
@@ -1193,6 +1196,48 @@
 
         // Search/Filter event listener
         searchInput.addEventListener('keyup', filterReports);
+
+        // Back to Form button listener
+        if (backToFormBtn) { // Check if element exists before adding listener
+            backToFormBtn.addEventListener('click', () => {
+                console.log("Back to Form button clicked. Showing form page.");
+                showPage('formPage');
+            });
+        }
+
+        // Login button listener
+        if (loginBtn) { // Check if element exists before adding listener
+            loginBtn.addEventListener('click', async () => {
+                console.log("Login button clicked.");
+                const email = loginEmailInput.value;
+                const password = loginPasswordInput.value;
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log("User logged in:", userCredential.user.email);
+                    showToast("Logged in successfully!", "success");
+                    // onAuthStateChanged will handle page redirection
+                } catch (error) {
+                    console.error("Login error:", error);
+                    showToast(`Login failed: ${error.message}`, "error");
+                }
+            });
+        }
+
+        // Logout button listener
+        if (logoutBtn) { // Check if element exists before adding listener
+            logoutBtn.addEventListener('click', async () => {
+                console.log("Logout button clicked.");
+                try {
+                    await signOut(auth);
+                    console.log("User logged out.");
+                    showToast("Logged out successfully!", "info");
+                    showPage('loginPage'); // Redirect to login page after logout
+                } catch (error) {
+                    console.error("Logout error:", error);
+                    showToast(`Logout failed: ${error.message}`, "error");
+                }
+            });
+        }
 
 
         // --- Export to CSV Function ---
