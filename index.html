@@ -785,6 +785,12 @@
                 console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
+                // Auto-scroll to the charts section immediately after submission
+                const chartsSection = document.getElementById('dashboardCharts');
+                if (chartsSection) {
+                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
             } catch (e) {
@@ -865,12 +871,6 @@
 
                 aiResponseDisplay.innerHTML = aiGeneratedText; // Display AI response
                 showToast("AI analysis complete!", "info");
-
-                // Auto-scroll to the charts section AFTER AI analysis is complete
-                const chartsSection = document.getElementById('dashboardCharts');
-                if (chartsSection) {
-                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
 
             } catch (error) {
                 console.error("Error processing report with AI:", error);
@@ -977,6 +977,61 @@
                 `;
             }
             defectTypeChartHtml += `</div></div>`;
+            dashboardChartsContainer.innerHTML += defectTypeChartHtml;
+
+
+            // 3. Reports by Reporter Role (Bar Chart)
+            const roleCounts = {};
+            reports.forEach(report => {
+                const role = report.userRole || 'Unknown';
+                roleCounts[role] = (roleCounts[role] || 0) + 1;
+            });
+
+            let roleChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Reports by Reporter Role</h3>
+                <div class="bar-chart">`;
+            const maxRoleCount = Math.max(...Object.values(roleCounts));
+            for (const role in roleCounts) {
+                const percentage = (roleCounts[role] / maxRoleCount) * 100;
+                roleChartHtml += `
+                    <div class="bar-item">
+                        <span class="bar-label">${role}</span>
+                        <div class="flex-grow bg-gray-200 rounded-lg">
+                            <div class="bar-fill" style="width: ${percentage}%; background-color: #9b59b6;">
+                                <span class="bar-value">${roleCounts[role]}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            roleChartHtml += `</div></div>`;
+            dashboardChartsContainer.innerHTML += roleChartHtml;
+
+            // 4. Reports by Assigned Team (Bar Chart)
+            const teamCounts = {};
+            reports.forEach(report => {
+                const team = report.assignedTeam || 'Unassigned';
+                teamCounts[team] = (teamCounts[team] || 0) + 1;
+            });
+
+            let teamChartHtml = `<div class="chart-box">
+                <h3 class="chart-title">Reports by Assigned Team</h3>
+                <div class="bar-chart">`;
+            const maxTeamCount = Math.max(...Object.values(teamCounts));
+            for (const team in teamCounts) {
+                const percentage = (teamCounts[team] / maxTeamCount) * 100;
+                teamChartHtml += `
+                    <div class="bar-item">
+                        <span class="bar-label">${team}</span>
+                        <div class="flex-grow bg-gray-200 rounded-lg">
+                            <div class="bar-fill" style="width: ${percentage}%; background-color: #1abc9c;">
+                                <span class="bar-value">${teamCounts[team]}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            teamChartHtml += `</div></div>`;
             dashboardChartsContainer.innerHTML += teamChartHtml;
 
             // 5. Map Visualization (Static Google Map)
