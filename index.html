@@ -481,6 +481,7 @@
          * @param {string} pageId - The ID of the page to show ('formPage' or 'dashboardPage').
          */
         function showPage(pageId) {
+            console.log(`Attempting to show page: ${pageId}. Current user role: ${currentAppUserRole}`); // Debug log
             if (pageId === 'formPage') {
                 formPage.classList.remove('hidden');
                 dashboardPage.classList.add('hidden');
