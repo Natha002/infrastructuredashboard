@@ -481,17 +481,22 @@
          * @param {string} pageId - The ID of the page to show ('formPage' or 'dashboardPage').
          */
         function showPage(pageId) {
-            console.log(`Attempting to show page: ${pageId}.`); // Debug log
+            console.log(`[showPage] Attempting to show page: ${pageId}.`); // Debug log
             if (pageId === 'formPage') {
                 formPage.classList.remove('hidden');
                 dashboardPage.classList.add('hidden');
+                console.log("[showPage] Switched to formPage.");
             } else if (pageId === 'dashboardPage') {
                 formPage.classList.add('hidden');
                 dashboardPage.classList.remove('hidden');
+                console.log("[showPage] Switched to dashboardPage.");
                 // Scroll to charts when dashboard is shown
                 const chartsSection = document.getElementById('dashboardCharts');
                 if (chartsSection) {
                     chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    console.log("[showPage] Scrolled to dashboardCharts.");
+                } else {
+                    console.warn("[showPage] dashboardCharts element not found for scrolling.");
                 }
             }
         }
@@ -807,7 +812,7 @@
                     aiResponse: null, // Placeholder for AI response
                     ...reportData // Spread all other report data including userRole and submittedAt
                 });
-                console.log("Report added with ID: ", docRef.id);
+                console.log("[addReport] Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
                 // Show dashboard page for all users after submission
@@ -816,7 +821,7 @@
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
             } catch (e) {
-                console.error("Error adding document: ", e);
+                console.error("[addReport] Error adding document: ", e);
                 showToast("Failed to send report. Please try again.", "error");
                 aiResponseDisplay.innerHTML = `<p class="text-red-500">Submission failed: ${e.message}</p>`;
             } finally {
