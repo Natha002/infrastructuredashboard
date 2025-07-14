@@ -386,7 +386,6 @@
 
         let userId = null; // To store the current user's ID
         let isAuthReady = false; // Flag to ensure auth is ready before Firestore ops
-        // Removed: let currentAppUserRole = null; // No longer needed for role-based page visibility
 
         // Get UI elements
         const userIdDisplay = document.getElementById('userIdDisplay');
@@ -407,10 +406,6 @@
         const dashboardChartsContainer = document.getElementById('dashboardCharts');
         const searchInput = document.getElementById('searchInput');
         const toastContainer = document.getElementById('toast-container');
-        const backToFormBtn = document.getElementById('backToFormBtn'); // Get the new back button
-
-        const formPage = document.getElementById('formPage');
-        const dashboardPage = document.getElementById('dashboardPage');
 
 
         // Disable button initially
@@ -474,31 +469,6 @@
                 toast.classList.remove('show');
                 toast.addEventListener('transitionend', () => toast.remove());
             }, duration);
-        }
-
-        /**
-         * Toggles visibility of different pages/sections.
-         * @param {string} pageId - The ID of the page to show ('formPage' or 'dashboardPage').
-         */
-        function showPage(pageId) {
-            console.log(`[showPage] Attempting to show page: ${pageId}.`); // Debug log
-            if (pageId === 'formPage') {
-                formPage.classList.remove('hidden');
-                dashboardPage.classList.add('hidden');
-                console.log("[showPage] Switched to formPage.");
-            } else if (pageId === 'dashboardPage') {
-                formPage.classList.add('hidden');
-                dashboardPage.classList.remove('hidden');
-                console.log("[showPage] Switched to dashboardPage.");
-                // Scroll to charts when dashboard is shown
-                const chartsSection = document.getElementById('dashboardCharts');
-                if (chartsSection) {
-                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    console.log("[showPage] Scrolled to dashboardCharts.");
-                } else {
-                    console.warn("[showPage] dashboardCharts element not found for scrolling.");
-                }
-            }
         }
 
         // Helper to convert severity to a numerical value for sorting
@@ -812,16 +782,19 @@
                     aiResponse: null, // Placeholder for AI response
                     ...reportData // Spread all other report data including userRole and submittedAt
                 });
-                console.log("[addReport] Report added with ID: ", docRef.id);
+                console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
                 
-                // Show dashboard page for all users after submission
-                showPage('dashboardPage'); 
+                // Auto-scroll to the charts section immediately after submission
+                const chartsSection = document.getElementById('dashboardCharts');
+                if (chartsSection) {
+                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
 
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
             } catch (e) {
-                console.error("[addReport] Error adding document: ", e);
+                console.error("Error adding document: ", e);
                 showToast("Failed to send report. Please try again.", "error");
                 aiResponseDisplay.innerHTML = `<p class="text-red-500">Submission failed: ${e.message}</p>`;
             } finally {
@@ -1095,9 +1068,6 @@
             const assignedTeam = assignedTeamInput.value.trim();
             const userRole = userRoleSelect.value; // Get the selected user role
 
-            // Removed: currentAppUserRole = userRole; // No longer setting user role for page visibility
-
-
             let finalImageUrl = ''; // Initialize as empty string, no longer from URL input
 
             // If a file is uploaded, convert it to Base64
@@ -1170,11 +1140,6 @@
 
         // Search/Filter event listener
         searchInput.addEventListener('keyup', filterReports);
-
-        // Back to Form button listener
-        backToFormBtn.addEventListener('click', () => {
-            showPage('formPage');
-        });
 
 
         // --- Export to CSV Function ---
@@ -1288,7 +1253,6 @@
         // Initial setup for UI elements (hide AI spinner initially)
         document.addEventListener('DOMContentLoaded', () => {
             aiLoadingSpinner.classList.add('hidden');
-            showPage('formPage'); // Show the form page initially
         });
 
     </script>
@@ -1303,85 +1267,77 @@
             Loading User ID...
         </p>
 
-        <!-- Form Page -->
-        <div id="formPage" class="page">
-            <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
-                <h2 class="section-title text-blue-700">Submit Road Defect Report</h2>
-                <p class="text-gray-600 mb-4">
-                    Fill in the details below to submit an inspection report.
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="input-group">
-                        <label for="userRole" class="text-blue-800">Your Role</label>
-                        <select id="userRole" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                            <option value="">Select Your Role</option>
-                            <option value="Regional Director (RD)">Regional Director (RD)</option>
-                            <option value="Inspector">Inspector</option>
-                            <option value="Assistant Engineer (Ass Eng)">Assistant Engineer (Ass Eng)</option>
-                            <option value="Foreman">Foreman</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="defectType" class="text-blue-800">Defect Type</label>
-                        <select id="defectType" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                            <option value="">Select Defect Type</option>
-                            <option value="Pothole">Pothole</option>
-                            <option value="Cracks (Road)">Cracks (Road)</option>
-                            <option value="Culvert Blockage">Culvert Blockage</option>
-                            <option value="Shoulder Erosion">Shoulder Erosion</option>
-                            <option value="Drainage Issue">Drainage Issue</option>
-                            <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
-                            <option value="Bridge Damage">Bridge Damage</option>
-                            <option value="Warning Signs (Damaged/Missing)">Warning Signs (Damaged/Missing)</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="severity" class="text-blue-800">Severity Level</label>
-                        <select id="severity" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                            <option value="">Select Severity</option>
-                            <option value="Critical">Critical</option>
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
-                        <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                    </div>
+        <!-- Submit Report Section -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-blue-700">Submit Road Defect Report</h2>
+            <p class="text-gray-600 mb-4">
+                Fill in the details below to submit an inspection report.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="userRole" class="text-blue-800">Your Role</label>
+                    <select id="userRole" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Your Role</option>
+                        <option value="Regional Director (RD)">Regional Director (RD)</option>
+                        <option value="Inspector">Inspector</option>
+                        <option value="Assistant Engineer (Ass Eng)">Assistant Engineer (Ass Eng)</option>
+                        <option value="Foreman">Foreman</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-                <div class="input-group mb-4">
-                    <label for="assetId" class="text-blue-800">Asset ID (for Culverts/Bridges)</label>
-                    <input type="text" id="assetId" placeholder="e.g., C27-CULV-003" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                <div class="input-group">
+                    <label for="defectType" class="text-blue-800">Defect Type</label>
+                    <select id="defectType" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Defect Type</option>
+                        <option value="Pothole">Pothole</option>
+                        <option value="Cracks (Road)">Cracks (Road)</option>
+                        <option value="Culvert Blockage">Culvert Blockage</option>
+                        <option value="Shoulder Erosion">Shoulder Erosion</option>
+                        <option value="Drainage Issue">Drainage Issue</option>
+                        <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
+                        <option value="Bridge Damage">Bridge Damage</option>
+                        <option value="Warning Signs (Damaged/Missing)">Warning Signs (Damaged/Missing)</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
-                <div class="input-group mb-4">
-                    <label for="whatsappMessage" class="text-blue-800">Detailed Description</label>
-                    <textarea id="whatsappMessage" rows="3" placeholder="Enter defect details here, e.g., 'Large pothole causing traffic swerving near Odienya stream.'" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300"></textarea>
+                <div class="input-group">
+                    <label for="severity" class="text-blue-800">Severity Level</label>
+                    <select id="severity" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select Severity</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
                 </div>
-                <div class="input-group mb-4">
-                    <label for="imageUpload" class="text-blue-800">Upload Image (Optional)</label>
-                    <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-                <div class="input-group mb-6">
-                    <label for="assignedTeam" class="text-blue-800">Assigned Team/Contractor (Optional)</label>
-                    <input type="text" id="assignedTeam" placeholder="e.g., Maintenance Team A or XYZ Contractors" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-                <div class="flex flex-col md:flex-row gap-4">
-                    <button id="simulateMessageBtn" class="btn btn-primary flex-grow">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
-                        </svg>
-                        Submit Inspection Report
-                    </button>
+                <div class="input-group">
+                    <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
+                    <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
                 </div>
             </div>
-        </div>
-
-        <!-- Dashboard Page -->
-        <div id="dashboardPage" class="page hidden">
-            <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="input-group mb-4">
+                <label for="assetId" class="text-blue-800">Asset ID (for Culverts/Bridges)</label>
+                <input type="text" id="assetId" placeholder="e.g., C27-CULV-003" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="input-group mb-4">
+                <label for="whatsappMessage" class="text-blue-800">Detailed Description</label>
+                <textarea id="whatsappMessage" rows="3" placeholder="Enter defect details here, e.g., 'Large pothole causing traffic swerving near Odienya stream.'" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300"></textarea>
+            </div>
+            <div class="input-group mb-4">
+                <label for="imageUpload" class="text-blue-800">Upload Image (Optional)</label>
+                <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="input-group mb-6">
+                <label for="assignedTeam" class="text-blue-800">Assigned Team/Contractor (Optional)</label>
+                <input type="text" id="assignedTeam" placeholder="e.g., Maintenance Team A or XYZ Contractors" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <button id="simulateMessageBtn" class="btn btn-primary flex-grow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
+                    </svg>
+                    Submit Inspection Report
+                </button>
                 <button id="exportCsvBtn" class="btn btn-secondary flex-grow">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -1394,42 +1350,36 @@
                     </svg>
                     Export to PDF
                 </button>
-                 <button id="backToFormBtn" class="btn btn-secondary flex-grow">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-                    </svg>
-                    Back to Form
-                </button>
             </div>
+        </div>
 
-            <!-- AI Response Section -->
-            <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
-                <h2 class="section-title text-green-700">AI Analysis & Recommendations</h2>
-                <div id="aiResponseDisplay" class="text-gray-700">
-                    AI responses will appear here after a report is submitted.
-                </div>
-                <div id="aiLoadingSpinner" class="hidden loading-spinner mt-4 mx-auto"></div>
+        <!-- AI Response Section -->
+        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-green-700">AI Analysis & Recommendations</h2>
+            <div id="aiResponseDisplay" class="text-gray-700">
+                AI responses will appear here after a report is submitted.
             </div>
+            <div id="aiLoadingSpinner" class="hidden loading-spinner mt-4 mx-auto"></div>
+        </div>
 
-            <!-- Snapshot Analysis Section -->
-            <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
-                <h2 class="section-title text-purple-700">Snapshot Analysis (Charts)</h2>
-                <div id="dashboardCharts" class="chart-container">
-                    <p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>
-                </div>
+        <!-- Snapshot Analysis Section -->
+        <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
+            <h2 class="section-title text-purple-700">Snapshot Analysis (Charts)</h2>
+            <div id="dashboardCharts" class="chart-container">
+                <p class="text-gray-500 text-center w-full">No data for charts yet. Submit reports!</p>
             </div>
+        </div>
 
-            <!-- Reports Display Section -->
-            <div class="p-6 bg-gray-50 rounded-lg shadow-inner overflow-x-auto">
-                <h2 class="section-title text-gray-700">Recent Road Inspection Reports</h2>
-                <div class="mb-4">
-                    <label for="searchInput" class="block text-gray-700 text-sm font-bold mb-2">Search Reports:</label>
-                    <input type="text" id="searchInput" placeholder="Search by message, type, severity, etc." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-                <div id="reportsContainer">
-                    <!-- Reports will be dynamically loaded here by JavaScript -->
-                    <p class="text-gray-500 text-center">Loading reports...</p>
-                </div>
+        <!-- Reports Display Section -->
+        <div class="p-6 bg-gray-50 rounded-lg shadow-inner overflow-x-auto">
+            <h2 class="section-title text-gray-700">Recent Road Inspection Reports</h2>
+            <div class="mb-4">
+                <label for="searchInput" class="block text-gray-700 text-sm font-bold mb-2">Search Reports:</label>
+                <input type="text" id="searchInput" placeholder="Search by message, type, severity, etc." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300">
+            </div>
+            <div id="reportsContainer">
+                <!-- Reports will be dynamically loaded here by JavaScript -->
+                <p class="text-gray-500 text-center">Loading reports...</p>
             </div>
         </div>
     </div>
