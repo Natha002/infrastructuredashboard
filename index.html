@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Powered Infrastructure Dashboard for KeNHA(Western)</title>
+    <title>AI-Powered Infrastructure Dashboard for KeNHA (Western)</title>
     <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- jsPDF and html2canvas for PDF export -->
@@ -144,15 +144,16 @@
             border-radius: 50%;
             width: 24px;
             height: 24px;
-            animation: spin 1s linear infinite;
+            animation: none; /* Explicitly removed animation */
             display: inline-block;
             vertical-align: middle;
             margin-left: 10px;
         }
-        @keyframes spin {
+        /* Removed @keyframes spin as it's no longer needed */
+        /* @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
+        } */
         /* Responsive adjustments */
         @media (max-width: 1024px) { /* Adjusted breakpoint for table stacking */
             .reports-table, .reports-table thead, .reports-table tbody, .reports-table th, .reports-table td, .reports-table tr {
@@ -402,8 +403,6 @@
         const assetIdInput = document.getElementById('assetId');
         const assignedTeamInput = document.getElementById('assignedTeam');
         const userRoleSelect = document.getElementById('userRole');
-        const latitudeInput = document.getElementById('latitude'); // New
-        const longitudeInput = document.getElementById('longitude'); // New
         const reportsContainer = document.getElementById('reportsContainer');
         const aiResponseDisplay = document.getElementById('aiResponseDisplay');
         const aiLoadingSpinner = document.getElementById('aiLoadingSpinner');
@@ -416,9 +415,7 @@
 
         // Disable button initially
         simulateMessageBtn.disabled = true;
-        simulateMessageBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.516 12.228 2 11.104 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9H7v2h2V9z" clip-rule="evenodd" />
-        </svg> Initializing...`; // Indicate loading state
+        simulateMessageBtn.innerHTML = `<span class="loading-spinner"></span> Initializing...`; // Indicate loading state
 
 
         // --- Firebase Authentication ---
@@ -602,6 +599,15 @@
                             submittedAt: new Date(Date.now() - 3600000 * 0.5).toISOString(),
                             status: 'In Progress', assignedTeam: 'Team Gamma', aiResponse: 'Monitor drainage, plan for routine maintenance.',
                             latitude: -0.2833, longitude: 34.5833 // Example: Kisii
+                        },
+                        {
+                            id: 'sample9', userRole: 'Inspector', defectType: 'Warning Signs (Damaged/Missing)', severity: 'High',
+                            kmPost: 'KM 5+000', assetId: 'N/A', message: 'Stop sign missing at intersection.',
+                            imageUrl: 'https://placehold.co/80x60/e74c3c/ffffff?text=Sign', // Red for warning
+                            timestamp: new Date(Date.now() - 3600000 * 0.25), // 15 mins ago
+                            submittedAt: new Date(Date.now() - 3600000 * 0.25).toISOString(),
+                            status: 'Reported', assignedTeam: 'Team Delta', aiResponse: 'Urgent replacement of missing stop sign required for safety.',
+                            latitude: -0.0500, longitude: 34.7500 // Example: Kisumu
                         }
                     ];
                     allReports = [...sampleReports]; // Use all sample reports if Firestore is empty
@@ -703,7 +709,7 @@
                     <td data-label="Reporter Role">${report.userRole || 'N/A'}</td>
                     <td data-label="Type">${report.defectType || 'N/A'}</td>
                     <td data-label="Severity">${report.severity || 'N/A'}</td>
-                    <td data-label="Location (KM Post)">${report.kmPost || 'N/A'}${report.latitude && report.longitude ? `<br><span class="text-xs text-gray-500">(${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)})</span>` : ''}</td>
+                    <td data-label="Location (KM Post)">${report.kmPost || 'N/A'}</td>
                     <td data-label="Asset ID">${report.assetId || 'N/A'}</td>
                     <td data-label="Message">${report.message}</td>
                     <td data-label="Image">
@@ -783,6 +789,13 @@
                 });
                 console.log("Report added with ID: ", docRef.id);
                 showToast("Report submitted successfully!", "success");
+                
+                // Auto-scroll is now handled after AI processing
+                // const chartsSection = document.getElementById('dashboardCharts');
+                // if (chartsSection) {
+                //     chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // }
+
                 // Trigger AI processing immediately after adding the report
                 processReportWithAI(docRef.id, reportData.message, reportData.defectType, reportData.severity);
             } catch (e) {
@@ -846,7 +859,11 @@
                     if (severity === "Critical") recommendedAction = "Immediate bridge closure and structural engineering assessment.";
                     else if (severity === "High") recommendedAction = "Urgent structural assessment and temporary support.";
                     else recommendedAction = "Schedule detailed bridge inspection.";
-                } else {
+                } else if (defectType === "Warning Signs (Damaged/Missing)") { // New AI logic for Warning Signs
+                    if (severity === "Critical" || severity === "High") recommendedAction = "Urgent replacement/repair of warning sign required for safety.";
+                    else recommendedAction = "Schedule routine inspection and repair of warning signs.";
+                }
+                else {
                     recommendedAction = "Further investigation required for this defect type.";
                 }
 
@@ -859,6 +876,12 @@
 
                 aiResponseDisplay.innerHTML = aiGeneratedText; // Display AI response
                 showToast("AI analysis complete!", "info");
+
+                // Auto-scroll to the charts section AFTER AI analysis is complete
+                const chartsSection = document.getElementById('dashboardCharts');
+                if (chartsSection) {
+                    chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
 
             } catch (error) {
                 console.error("Error processing report with AI:", error);
@@ -1029,6 +1052,7 @@
             let validLocationsCount = 0;
 
             reports.forEach(report => {
+                // Only add markers if latitude and longitude exist in the report
                 if (report.latitude && report.longitude) {
                     mapMarkers += `&markers=color:${getSeverityColor(report.severity)}%7Clabel:${report.defectType.charAt(0)}%7C${report.latitude},${report.longitude}`;
                     centerLat += report.latitude;
@@ -1041,7 +1065,7 @@
                 centerLat /= validLocationsCount;
                 centerLng /= validLocationsCount;
             } else {
-                // Default to a central point in Kenya if no valid locations
+                // Default to a central point in Kenya if no valid locations in current reports
                 centerLat = -0.0236; // Approx center of Kenya
                 centerLng = 37.9062;
             }
@@ -1078,8 +1102,6 @@
             const assetId = assetIdInput.value.trim();
             const assignedTeam = assignedTeamInput.value.trim();
             const userRole = userRoleSelect.value; // Get the selected user role
-            const latitude = parseFloat(latitudeInput.value); // New
-            const longitude = parseFloat(longitudeInput.value); // New
 
             let finalImageUrl = ''; // Initialize as empty string, no longer from URL input
 
@@ -1123,11 +1145,6 @@
                 showToast("Please select your Role.", "error");
                 return;
             }
-            if (isNaN(latitude) || isNaN(longitude)) {
-                 showToast("Please enter valid numbers for Latitude and Longitude.", "error");
-                 return;
-            }
-
 
             const reportData = {
                 message: message,
@@ -1139,8 +1156,9 @@
                 status: "Reported", // Default status
                 assignedTeam: assignedTeam || "Unassigned", // Default if not provided
                 userRole: userRole, // Include the selected user role
-                latitude: latitude, // New
-                longitude: longitude, // New
+                // For demonstration, assign random coordinates within Kenya (Western region focus)
+                latitude: (Math.random() * (1.0 - (-1.0)) + (-1.0)).toFixed(4), // Approx -1.0 to 1.0 for Western Kenya
+                longitude: (Math.random() * (35.0 - 33.0) + 33.0).toFixed(4), // Approx 33.0 to 35.0 for Western Kenya
                 submittedAt: new Date().toISOString() // Client-side timestamp for immediate display
             };
 
@@ -1154,8 +1172,6 @@
             assetIdInput.value = '';
             userRoleSelect.value = ''; // Reset user role
             assignedTeamInput.value = ''; // Clear assigned team
-            latitudeInput.value = ''; // Clear latitude
-            longitudeInput.value = ''; // Clear longitude
         });
 
         // Search/Filter event listener
@@ -1182,7 +1198,9 @@
                 row.querySelectorAll('td').forEach((cell, index) => {
                     let cellText;
                     // For the status dropdown, get the selected value
-                    if (cell.querySelector('.status-dropdown')) { // Check if it's the status dropdown cell
+                    // The index for status might change if columns are added/removed.
+                    // Better to check for the class `status-dropdown`
+                    if (cell.querySelector('.status-dropdown')) { 
                         const selectElement = cell.querySelector('.status-dropdown');
                         cellText = selectElement ? selectElement.value : cell.innerText;
                     } else {
@@ -1279,7 +1297,7 @@
     <div id="toast-container"></div> <!-- Toast container -->
     <div class="container bg-white rounded-xl shadow-lg p-8 md:p-10 lg:p-12">
         <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-800 mb-6">
-            AI-Powered Infrastructure Dashboard for KeNHA
+            AI-Powered Infrastructure Dashboard for KeNHA (Western)
         </h1>
         <p id="userIdDisplay" class="text-sm text-gray-600 text-center mb-6 p-2 bg-blue-50 rounded-md">
             Loading User ID...
@@ -1314,6 +1332,7 @@
                         <option value="Drainage Issue">Drainage Issue</option>
                         <option value="Vegetation Overgrowth">Vegetation Overgrowth</option>
                         <option value="Bridge Damage">Bridge Damage</option>
+                        <option value="Warning Signs (Damaged/Missing)">Warning Signs (Damaged/Missing)</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -1330,14 +1349,6 @@
                 <div class="input-group">
                     <label for="kmPost" class="text-blue-800">Kilometer Post (e.g., KM 2+500)</label>
                     <input type="text" id="kmPost" placeholder="e.g., KM 2+500" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-                <div class="input-group">
-                    <label for="latitude" class="text-blue-800">Latitude</label>
-                    <input type="text" id="latitude" placeholder="e.g., -1.2921" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
-                </div>
-                <div class="input-group">
-                    <label for="longitude" class="text-blue-800">Longitude</label>
-                    <input type="text" id="longitude" placeholder="e.g., 36.8219" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300">
                 </div>
             </div>
             <div class="input-group mb-4">
